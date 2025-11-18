@@ -57,6 +57,9 @@ let opsTimeLimit = 90;
 let timerId = null;
 let timerRemaining = 0;
 
+// حوار عام (تغيير اسم / فريق)
+let dialogConfirmHandler = null;
+
 // الكلمات
 const ALL_WORDS = [
   "مكة","المدينة","الرياض","جدة","الدمام","القاهرة","دمشق","بيروت","بغداد","الدوحة",
@@ -166,7 +169,7 @@ function updateHostControlsUI() {
   if (opsInput)    opsInput.disabled    = !isHost;
 }
 
-// معلومات اللاعب في شاشة اللعبة
+// تحديث اسم/فريق/دور اللاعب في شاشة اللعبة
 function updatePlayerInfoUI() {
   const nameInfo = document.getElementById("player-name-info");
   const teamInfo = document.getElementById("player-team-info");
@@ -254,7 +257,7 @@ function logEvent(message) {
   logContainer.scrollTop = logContainer.scrollHeight;
 }
 
-// Overlay للرسائل
+// Overlay للرسائل البسيطة
 function showInfoOverlay(message) {
   const overlay = document.getElementById("info-overlay");
   const text    = document.getElementById("info-text");
@@ -267,6 +270,33 @@ function closeInfoOverlay() {
   const overlay = document.getElementById("info-overlay");
   if (!overlay) return;
   overlay.classList.add("hidden");
+}
+
+// حوار إدخال (اسم/فريق) بنفس ستايل CIPHER
+function showInputDialog(message, defaultValue, placeholder, onConfirm) {
+  const overlay   = document.getElementById("dialog-overlay");
+  const textEl    = document.getElementById("dialog-text");
+  const inputEl   = document.getElementById("dialog-input");
+
+  // fallback لو ما تم تحديث الـ HTML
+  if (!overlay || !textEl || !inputEl) {
+    const v = prompt(message, defaultValue || "");
+    if (v === null) return;
+    onConfirm(v);
+    return;
+  }
+
+  textEl.innerHTML = message.replace(/\n/g, "<br>");
+  inputEl.value = defaultValue || "";
+  inputEl.placeholder = placeholder || "";
+  overlay.classList.remove("hidden");
+  inputEl.focus();
+  dialogConfirmHandler = () => {
+    const val = inputEl.value;
+    overlay.classList.add("hidden");
+    dialogConfirmHandler = null;
+    onConfirm(val);
+  };
 }
 
 // هل يقدر يلمس الكروت الآن؟
@@ -287,6 +317,23 @@ function canInteractWithCards(showMessage) {
 }
 
 // التايمر
+
+// تحديث قيم التايمر من المدخلات (مهم عشان المشكلة اللي عندك)
+function refreshTimeLimitsFromInputs() {
+  const masterInput = document.getElementById("master-time-input");
+  const opsInput    = document.getElementById("ops-time-input");
+
+  if (masterInput) {
+    let v = parseInt(masterInput.value, 10);
+    if (!isNaN(v) && v >= 10 && v <= 600) masterTimeLimit = v;
+  }
+
+  if (opsInput) {
+    let v = parseInt(opsInput.value, 10);
+    if (!isNaN(v) && v >= 10 && v <= 600) opsTimeLimit = v;
+  }
+}
+
 function startPhaseTimer(phaseType) {
   stopTimer();
 
@@ -415,7 +462,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
       const exists = await checkRoomExistsInDb(code);
       if (!exists) {
-        showInfoOverlay("هذه الغرفة غير موجودة. هذا طبيعي الآن لأن اللعبة تعمل أوفلاين على جهاز واحد فقط.");
+        showInfoOverlay("هذه الغرفة غير موجودة. تأكد من الكود.");
         return;
       }
 
@@ -434,17 +481,17 @@ window.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // زر "دخول اللعبة (Spectator)"
+  // زر "دخول اللعبة (Spectator)" — فقط ينقلك للواجهة، ما يبدأ الجولة
   if (enterGameBtn) {
     enterGameBtn.onclick = () => {
       const box = document.querySelector(".box");
       if (box) box.classList.add("corner");
 
       updatePlayerInfoUI();
+      updateInGameRoomCodeUI();
       showSection("game-area");
       updateHostControlsUI();
-      updateInGameRoomCodeUI();
-      startNewRoundFlow();
+      // الهوست لازم يضغط "بدء اللعبة"
     };
   }
 
@@ -454,6 +501,32 @@ window.addEventListener("DOMContentLoaded", () => {
     infoOkBtn.onclick = () => {
       closeInfoOverlay();
     };
+  }
+
+  // تهيئة حوار الإدخال
+  const dialogConfirmBtn = document.getElementById("dialog-confirm-btn");
+  const dialogCancelBtn  = document.getElementById("dialog-cancel-btn");
+  const dialogInput      = document.getElementById("dialog-input");
+  const dialogOverlay    = document.getElementById("dialog-overlay");
+
+  if (dialogConfirmBtn) {
+    dialogConfirmBtn.onclick = () => {
+      if (dialogConfirmHandler) dialogConfirmHandler();
+    };
+  }
+  if (dialogCancelBtn && dialogOverlay) {
+    dialogCancelBtn.onclick = () => {
+      dialogOverlay.classList.add("hidden");
+      dialogConfirmHandler = null;
+    };
+  }
+  if (dialogInput) {
+    dialogInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && dialogConfirmHandler) {
+        e.preventDefault();
+        dialogConfirmHandler();
+      }
+    });
   }
 
   // أزرار اختيار الأدوار في اللوبي
@@ -467,29 +540,27 @@ window.addEventListener("DOMContentLoaded", () => {
   if (redOpsBtn)   redOpsBtn.onclick   = () => chooseRole("red",  "operative");
   if (blueSpyBtn)  blueSpyBtn.onclick  = () => chooseRole("blue", "spymaster");
   if (blueOpsBtn)  blueOpsBtn.onclick  = () => chooseRole("blue", "operative");
-  if (leaveRoleBtn) leaveRoleBtn.onclick = () => leaveRole();
+  if (leaveRoleBtn) leaveRoleBtn.onclick = () => changeToSpectatorInGame();
 
   // أزرار التحكم في الجولة
   const startGameBtn     = document.getElementById("start-game-btn");
-  const newRoundBtn      = document.getElementById("new-round-btn");
   const endRoundBtn      = document.getElementById("end-round-btn");
   const resultToLobbyBtn = document.getElementById("result-to-lobby-btn");
 
   if (startGameBtn)     startGameBtn.onclick     = () => startGame();
-  if (newRoundBtn)      newRoundBtn.onclick      = () => startNewRoundFlow();
   if (endRoundBtn)      endRoundBtn.onclick      = () => endRoundAndReturn();
   if (resultToLobbyBtn) resultToLobbyBtn.onclick = () => returnToLobbyFromResult();
 
   // أزرار أعلى الشاشة داخل الجولة
-  const changeTeamBtn   = document.getElementById("btn-change-team");
-  const changeNameBtn   = document.getElementById("btn-change-name");
-  const toSpectatorBtn  = document.getElementById("btn-to-spectator");
+  const changeTeamBtn = document.getElementById("btn-change-team");
+  const changeNameBtn = document.getElementById("btn-change-name");
+  const toSpectatorBtn = document.getElementById("btn-to-spectator");
 
-  if (changeTeamBtn)  changeTeamBtn.onclick  = () => changeTeamInGame();
-  if (changeNameBtn)  changeNameBtn.onclick  = () => changeNameInGame();
-  if (toSpectatorBtn) toSpectatorBtn.onclick = () => becomeSpectatorInGame();
+  if (changeTeamBtn)   changeTeamBtn.onclick   = () => changeTeamInGame();
+  if (changeNameBtn)   changeNameBtn.onclick   = () => changeNameInGame();
+  if (toSpectatorBtn)  toSpectatorBtn.onclick  = () => changeToSpectatorInGame();
 
-  // لاقط عام لبعض النصوص لو كانت أزرار مو حقيقية
+  // لاقط عام فقط لزر "حسناً" لو فيه نسخ أخرى
   document.addEventListener("click", (event) => {
     const el  = event.target;
     if (!el) return;
@@ -582,105 +653,121 @@ function chooseRole(team, role) {
   updatePlayerInfoUI();
 }
 
-// ===== تغيير الفريق أثناء الجولة (Spectator + Seekers فقط) =====
+// ===== تغيير الفريق أثناء الجولة =====
 function changeTeamInGame() {
-  // غير مسموح للـ Clue يغيّر فريقه مباشرة
-  if (playerRole && playerRole !== "operative") {
-    showInfoOverlay("تغيير الفريق أثناء الجولة متاح فقط لـ Spectator و Seekers Cipher.\nيمكنك التحويل إلى Spectator أولاً ثم اختيار فريق جديد.");
+  // Spectator: يختار أي رول
+  if (!playerRole) {
+    const msg =
+      "اختر الرقم:\n" +
+      "1 - Seekers الفريق الأحمر\n" +
+      "2 - Seekers الفريق الأزرق\n" +
+      "3 - Clue Cipher الفريق الأحمر (إذا كان متاحًا)\n" +
+      "4 - Clue Cipher الفريق الأزرق (إذا كان متاحًا)";
+    showInputDialog(msg, "", "اكتب رقم 1 أو 2 أو 3 أو 4", (val) => {
+      const choice = (val || "").trim();
+      if (!choice) return;
+
+      if (choice === "1") {
+        chooseRole("red", "operative");
+      } else if (choice === "2") {
+        chooseRole("blue", "operative");
+      } else if (choice === "3") {
+        chooseRole("red", "spymaster");
+      } else if (choice === "4") {
+        chooseRole("blue", "spymaster");
+      } else {
+        showInfoOverlay("اختيار غير صحيح.");
+        return;
+      }
+      updatePlayerInfoUI();
+    });
     return;
   }
 
-  // Spectator: يختار الدور + الفريق
-  if (!playerRole) {
-    const choice = prompt(
-      "اختر الدور والفريق:\n" +
-      "1 - Clue Cipher (الفريق الأحمر)\n" +
-      "2 - Clue Cipher (الفريق الأزرق)\n" +
-      "3 - Seekers Cipher (الفريق الأحمر)\n" +
-      "4 - Seekers Cipher (الفريق الأزرق)\n\n" +
-      "اكتب رقم من 1 إلى 4:"
-    );
-    if (!choice) return;
+  // Seekers: يقدر يبدّل بين الأحمر والأزرق فقط
+  if (playerRole === "operative") {
+    const msg =
+      "اختر الرقم:\n" +
+      "1 - الانتقال إلى Seekers الفريق الأحمر\n" +
+      "2 - الانتقال إلى Seekers الفريق الأزرق";
+    showInputDialog(msg, "", "1 أو 2", (val) => {
+      const choice = (val || "").trim();
+      if (!choice) return;
 
-    if (choice === "1")      chooseRole("red",  "spymaster");
-    else if (choice === "2") chooseRole("blue", "spymaster");
-    else if (choice === "3") chooseRole("red",  "operative");
-    else if (choice === "4") chooseRole("blue", "operative");
-    else {
-      showInfoOverlay("اختيار غير صحيح.");
+      if (choice === "1") {
+        chooseRole("red", "operative");
+      } else if (choice === "2") {
+        chooseRole("blue", "operative");
+      } else {
+        showInfoOverlay("اختيار غير صحيح.");
+        return;
+      }
+      updatePlayerInfoUI();
+    });
+    return;
+  }
+
+  // Clue Cipher: يقدر يتنقل للفريق الآخر لو ما فيه Clue هناك
+  if (playerRole === "spymaster") {
+    const otherTeam = playerTeam === "red" ? "blue" : "red";
+    const otherSpan = document.getElementById(
+      otherTeam === "blue" ? "blue-spymaster-name" : "red-spymaster-name"
+    );
+    const occupied =
+      otherSpan && otherSpan.textContent !== "غير معيّن" && otherSpan.textContent !== playerName;
+
+    if (occupied) {
+      showInfoOverlay("لا يمكن تغيير الفريق: يوجد Clue Cipher للفريق الآخر بالفعل.");
       return;
     }
 
-    updatePlayerInfoUI();
-    return;
+    const msg =
+      "اختر الرقم:\n" +
+      `1 - البقاء في الفريق الحالي (${playerTeam === "red" ? "الأحمر" : "الأزرق"})\n` +
+      `2 - الانتقال إلى Clue Cipher للفريق ${otherTeam === "red" ? "الأحمر" : "الأزرق"}`;
+    showInputDialog(msg, "2", "1 أو 2", (val) => {
+      const choice = (val || "").trim();
+      if (choice === "2") {
+        chooseRole(otherTeam, "spymaster");
+        updatePlayerInfoUI();
+      }
+    });
   }
-
-  // Seekers: يبدّل بين الفريقين بنفس الدور
-  const choice = prompt(
-    "اختر الفريق الجديد كـ Seekers Cipher:\n" +
-    "1 - الفريق الأحمر\n" +
-    "2 - الفريق الأزرق\n\n" +
-    "اكتب 1 أو 2:"
-  );
-  if (!choice) return;
-
-  if (choice === "1")      chooseRole("red",  "operative");
-  else if (choice === "2") chooseRole("blue", "operative");
-  else {
-    showInfoOverlay("اختيار غير صحيح.");
-    return;
-  }
-
-  updatePlayerInfoUI();
 }
 
 // ===== تغيير الاسم أثناء الجولة =====
 function changeNameInGame() {
   const oldName = playerName || "لاعب مجهول";
-  const newNameRaw = prompt("اكتب الاسم الجديد:", oldName);
-  if (newNameRaw === null) return;
+  showInputDialog("اكتب الاسم الجديد:", oldName, "", (raw) => {
+    if (raw === null || raw === undefined) return;
+    const newName = raw.trim() || "لاعب مجهول";
+    playerName = newName;
 
-  const newName = newNameRaw.trim() || "لاعب مجهول";
-  playerName = newName;
+    const label = document.getElementById("player-name-label");
+    if (label) label.textContent = playerName;
 
-  const label = document.getElementById("player-name-label");
-  if (label) label.textContent = playerName;
+    updatePlayerInfoUI();
 
-  updatePlayerInfoUI();
-
-  // تحديث الاسم في اللوبي
-  if (playerRole === "spymaster" && playerTeam) {
-    const id = playerTeam === "blue" ? "blue-spymaster-name" : "red-spymaster-name";
-    const span = document.getElementById(id);
-    if (span) span.textContent = playerName;
-  } else if (playerRole === "operative" && playerTeam) {
-    const listId = playerTeam === "blue" ? "blue-operatives-list" : "red-operatives-list";
-    const list = document.getElementById(listId);
-    if (list && list.children.length > 0) {
-      list.children[0].textContent = playerName;
+    // تحديث الاسم في اللوبي
+    if (playerRole === "spymaster" && playerTeam) {
+      const id = playerTeam === "blue" ? "blue-spymaster-name" : "red-spymaster-name";
+      const span = document.getElementById(id);
+      if (span) span.textContent = playerName;
+    } else if (playerRole === "operative" && playerTeam) {
+      const listId = playerTeam === "blue" ? "blue-operatives-list" : "red-operatives-list";
+      const list = document.getElementById(listId);
+      if (list && list.children.length > 0) {
+        list.children[0].textContent = playerName;
+      }
     }
-  }
+  });
 }
 
-// ===== التحويل إلى Spectator أثناء الجولة لأي دور =====
-function becomeSpectatorInGame() {
-  if (!playerTeam && !playerRole) {
-    showInfoOverlay("أنت بالفعل في وضع Spectator.");
-    return;
-  }
-
-  clearPreviousRoleUI();
-  playerTeam = null;
-  playerRole = null;
-
+// تحويل أي رول إلى Spectator أثناء اللعب
+function changeToSpectatorInGame() {
+  leaveRole();
   updatePlayerInfoUI();
-
-  const teamLabel = document.getElementById("player-team-label");
-  const roleLabel = document.getElementById("player-role-label");
-  if (teamLabel) teamLabel.textContent = "غير محدد";
-  if (roleLabel) roleLabel.textContent = "غير محدد";
-
-  showInfoOverlay("تم التحويل إلى Spectator. يمكنك استخدام زر تغيير الفريق للانضمام من جديد.");
+  showClueToast("تم تحويلك إلى Spectator.");
 }
 
 // ===== بدء اللعبة =====
@@ -696,14 +783,8 @@ function startGame() {
     return;
   }
 
-  const masterInput = document.getElementById("master-time-input");
-  const opsInput    = document.getElementById("ops-time-input");
-
-  const masterVal = parseInt(masterInput ? masterInput.value : "60", 10);
-  const opsVal    = parseInt(opsInput ? opsInput.value : "90", 10);
-
-  masterTimeLimit = isNaN(masterVal) ? 60 : masterVal;
-  opsTimeLimit    = isNaN(opsVal) ? 90 : opsVal;
+  // نتأكد إن قيم التايمر محدثة
+  refreshTimeLimitsFromInputs();
 
   const box = document.querySelector(".box");
   if (box) box.classList.add("corner");
@@ -719,6 +800,9 @@ function startGame() {
 
 // جولة جديدة
 function startNewRoundFlow() {
+  // كل جولة جديدة نقرأ الوقت من المدخلات (عشان لو غيرته بين الجولات)
+  refreshTimeLimitsFromInputs();
+
   const overlay = document.getElementById("result-overlay");
   if (overlay) overlay.classList.add("hidden");
 
