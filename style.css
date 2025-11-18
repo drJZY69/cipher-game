@@ -223,7 +223,7 @@ button:hover:not(:disabled) {
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(248, 250, 252, 0.2);
-  margin-right: auto; /* تخليها تميل لليسار شوي في RTL */
+  margin-right: auto;
   font-size: 13px;
 }
 
@@ -403,7 +403,7 @@ button:hover:not(:disabled) {
   opacity: 0.95;
 }
 
-/* ===== شاشة الفوز / الرسائل / تغيير الاسم ===== */
+/* ===== شاشة الفوز / الرسائل ===== */
 .overlay {
   position: fixed;
   top: 0;
@@ -419,10 +419,7 @@ button:hover:not(:disabled) {
 
 .overlay.hidden { display: none; }
 
-.overlay-box { 
-  text-align: center;
-  padding: 20px 24px;
-}
+.overlay-box { text-align: center; }
 
 .overlay-logo {
   font-size: 65px;
@@ -435,26 +432,27 @@ button:hover:not(:disabled) {
 
 .overlay-text {
   font-size: 28px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
-/* حقل تغيير الاسم داخل الـ overlay */
-.overlay-input {
-  width: 100%;
-  max-width: 340px;
-  padding: 10px 14px;
+/* ===== حوار إدخال (اسم/فريق) ===== */
+.dialog-input {
+  margin-top: 4px;
+  padding: 8px 14px;
   border-radius: 999px;
   border: none;
+  min-width: 260px;
+  max-width: 90vw;
   text-align: center;
   font-size: 15px;
-  margin-bottom: 16px;
+  outline: none;
 }
 
-/* أزرار حفظ / إلغاء داخل overlay */
-.overlay-actions {
+.dialog-buttons {
+  margin-top: 16px;
   display: flex;
-  gap: 10px;
   justify-content: center;
+  gap: 10px;
 }
 
 /* ===== عدّ تنازلي بصري للثواني الأخيرة ===== */
@@ -523,6 +521,11 @@ button:hover:not(:disabled) {
   .room-pill {
     justify-content: center;
     margin-right: 0;
+  }
+
+  .dialog-input {
+    max-width: 320px;
+    width: 100%;
   }
 }
 
