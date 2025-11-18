@@ -385,6 +385,29 @@ button:hover:not(:disabled) {
   margin-bottom: 20px;
 }
 
+/* ===== عدّ تنازلي بصري للثواني الأخيرة ===== */
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 60;
+}
+
+.countdown-overlay.hidden {
+  display: none;
+}
+
+#countdown-number {
+  font-size: clamp(48px, 10vw, 96px);
+  font-weight: 900;
+  color: #f9fafb;
+  text-shadow: 0 0 25px rgba(0,0,0,0.9);
+  opacity: 0.9;
+}
+
 /* ===== الجوال / التابلت ===== */
 @media (max-width: 768px) {
   .box { transform: scale(0.9); }
