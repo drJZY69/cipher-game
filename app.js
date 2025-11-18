@@ -345,74 +345,80 @@ window.addEventListener("DOMContentLoaded", () => {
   const enterGameBtn  = document.getElementById("btn-enter-game");
 
   // إنشاء غرفة (هوست)
-  hostBtn.onclick = async () => {
-    let name = nicknameInput.value.trim();
-    if (!name) name = "لاعب مجهول";
-    playerName = name;
+  if (hostBtn) {
+    hostBtn.onclick = async () => {
+      let name = nicknameInput.value.trim();
+      if (!name) name = "لاعب مجهول";
+      playerName = name;
 
-    isHost   = true;
-    roomCode = generateRoomCode();
+      isHost   = true;
+      roomCode = generateRoomCode();
 
-    startingTeam = Math.random() < 0.5 ? "red" : "blue";
+      startingTeam = Math.random() < 0.5 ? "red" : "blue";
 
-    const ok = await createRoomInDb(roomCode, playerName, startingTeam);
-    if (!ok) {
-      isHost   = false;
-      roomCode = "";
-      return;
-    }
+      const ok = await createRoomInDb(roomCode, playerName, startingTeam);
+      if (!ok) {
+        isHost   = false;
+        roomCode = "";
+        return;
+      }
 
-    await addPlayerToRoom(roomCode, playerName, "none", "none");
+      await addPlayerToRoom(roomCode, playerName, "none", "none");
 
-    document.getElementById("player-name-label").textContent = playerName;
-    updateRoomInfoUI();
-    updateHostControlsUI();
+      document.getElementById("player-name-label").textContent = playerName;
+      updateRoomInfoUI();
+      updateHostControlsUI();
 
-    showSection("lobby-screen");
-  };
+      showSection("lobby-screen");
+    };
+  }
 
   // الانضمام إلى غرفة
-  joinBtn.onclick = async () => {
-    let name = nicknameInput.value.trim();
-    if (!name) name = "لاعب مجهول";
-    playerName = name;
+  if (joinBtn) {
+    joinBtn.onclick = async () => {
+      let name = nicknameInput.value.trim();
+      if (!name) name = "لاعب مجهول";
+      playerName = name;
 
-    const code = joinCodeInput.value.trim().toUpperCase();
-    if (code.length !== 5) {
-      showInfoOverlay("اكتب رمز غرفة مكوّن من 5 حروف إنجليزية.");
-      return;
-    }
+      const code = joinCodeInput.value.trim().toUpperCase();
+      if (code.length !== 5) {
+        showInfoOverlay("اكتب رمز غرفة مكوّن من 5 حروف إنجليزية.");
+        return;
+      }
 
-    const exists = await checkRoomExistsInDb(code);
-    if (!exists) {
-      showInfoOverlay("هذه الغرفة غير موجودة. تأكد من الكود.");
-      return;
-    }
+      const exists = await checkRoomExistsInDb(code);
+      if (!exists) {
+        showInfoOverlay("هذه الغرفة غير موجودة. تأكد من الكود.");
+        return;
+      }
 
-    isHost   = false;
-    roomCode = code;
+      isHost   = false;
+      roomCode = code;
 
-    await addPlayerToRoom(roomCode, playerName, "none", "none");
+      await addPlayerToRoom(roomCode, playerName, "none", "none");
 
-    document.getElementById("player-name-label").textContent = playerName;
-    updateRoomInfoUI();
-    updateHostControlsUI();
+      document.getElementById("player-name-label").textContent = playerName;
+      updateRoomInfoUI();
+      updateHostControlsUI();
 
-    showSection("lobby-screen");
-  };
+      showSection("lobby-screen");
+    };
+  }
 
   // زر "دخول اللعبة (Spectator)"
-  enterGameBtn.onclick = () => {
-    document.querySelector(".box").classList.add("corner");
-    updatePlayerInfoUI();
-    showSection("game-area");
-    updateHostControlsUI();
-    startNewRoundFlow();
-  };
+  if (enterGameBtn) {
+    enterGameBtn.onclick = () => {
+      document.querySelector(".box").classList.add("corner");
+      updatePlayerInfoUI();
+      showSection("game-area");
+      updateHostControlsUI();
+      startNewRoundFlow();
+    };
+  }
 
   // ===== ربط أزرار الواجهة الأخرى هنا عشان نضمن شغلها =====
 
-  // زر موافق في رسالة المعلومات
+  // زر موافق في رسالة المعلومات (لو عنده id)
   const infoOkBtn = document.getElementById("info-ok-btn");
   if (infoOkBtn) {
     infoOkBtn.onclick = () => {
@@ -420,31 +426,83 @@ window.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // أزرار اختيار الأدوار في اللوبي
-  const redSpyBtn   = document.getElementById("btn-red-spymaster");
-  const redOpsBtn   = document.getElementById("btn-red-operative");
-  const blueSpyBtn  = document.getElementById("btn-blue-spymaster");
-  const blueOpsBtn  = document.getElementById("btn-blue-operative");
+  // أزرار اختيار الأدوار في اللوبي (لو عندها IDs)
+  const redSpyBtn    = document.getElementById("btn-red-spymaster");
+  const redOpsBtn    = document.getElementById("btn-red-operative");
+  const blueSpyBtn   = document.getElementById("btn-blue-spymaster");
+  const blueOpsBtn   = document.getElementById("btn-blue-operative");
   const leaveRoleBtn = document.getElementById("btn-leave-role");
 
-  if (redSpyBtn)  redSpyBtn.onclick  = () => chooseRole("red",  "spymaster");
-  if (redOpsBtn)  redOpsBtn.onclick  = () => chooseRole("red",  "operative");
-  if (blueSpyBtn) blueSpyBtn.onclick = () => chooseRole("blue", "spymaster");
-  if (blueOpsBtn) blueOpsBtn.onclick = () => chooseRole("blue", "operative");
+  if (redSpyBtn)   redSpyBtn.onclick   = () => chooseRole("red",  "spymaster");
+  if (redOpsBtn)   redOpsBtn.onclick   = () => chooseRole("red",  "operative");
+  if (blueSpyBtn)  blueSpyBtn.onclick  = () => chooseRole("blue", "spymaster");
+  if (blueOpsBtn)  blueOpsBtn.onclick  = () => chooseRole("blue", "operative");
   if (leaveRoleBtn) leaveRoleBtn.onclick = () => leaveRole();
 
   // أزرار التحكم في الجولة
-  const startGameBtn = document.getElementById("start-game-btn");
-  if (startGameBtn) startGameBtn.onclick = () => startGame();
-
-  const newRoundBtn = document.getElementById("new-round-btn");
-  if (newRoundBtn) newRoundBtn.onclick = () => startNewRoundFlow();
-
-  const endRoundBtn = document.getElementById("end-round-btn");
-  if (endRoundBtn) endRoundBtn.onclick = () => endRoundAndReturn();
-
+  const startGameBtn     = document.getElementById("start-game-btn");
+  const newRoundBtn      = document.getElementById("new-round-btn");
+  const endRoundBtn      = document.getElementById("end-round-btn");
   const resultToLobbyBtn = document.getElementById("result-to-lobby-btn");
+
+  if (startGameBtn)     startGameBtn.onclick     = () => startGame();
+  if (newRoundBtn)      newRoundBtn.onclick      = () => startNewRoundFlow();
+  if (endRoundBtn)      endRoundBtn.onclick      = () => endRoundAndReturn();
   if (resultToLobbyBtn) resultToLobbyBtn.onclick = () => returnToLobbyFromResult();
+
+  // 🔥 لاقط عام لكل الأزرار حسب النص اللي عليها
+  document.addEventListener("click", (event) => {
+    const btn = event.target.closest("button");
+    if (!btn) return;
+
+    const txt = btn.textContent.trim();
+
+    // زر "حسناً" في كل الرسائل
+    if (txt === "حسناً" || txt === "حسنا") {
+      closeInfoOverlay();
+      return;
+    }
+
+    // زر الخروج من الدور الحالي (Spectator)
+    if (txt.includes("خروج من الدور الحالي")) {
+      leaveRole();
+      return;
+    }
+
+    // زر إنهاء الجولة والرجوع إلى اللوبي داخل اللعبة
+    if (txt.includes("إنهاء الجولة") && txt.includes("الرجوع إلى اللوبي")) {
+      endRoundAndReturn();
+      return;
+    }
+
+    // زر الرجوع إلى اللوبي في شاشة النتيجة (لو نصه غير عن اللي فوق)
+    if (txt.includes("الرجوع إلى اللوبي") && !txt.includes("إنهاء الجولة")) {
+      returnToLobbyFromResult();
+      return;
+    }
+
+    // أزرار الانضمام للأدوار: "التقدم ك Clue Cipher" / "التقدم ك Seekers Cipher"
+    if (txt.startsWith("التقدم ك")) {
+      let role = null;
+      if (txt.includes("Clue Cipher"))    role = "spymaster";
+      if (txt.includes("Seekers Cipher")) role = "operative";
+      if (!role) return;
+
+      // نحدد الفريق من النص الموجود في الكرت الأب
+      let node = btn.parentElement;
+      let team = null;
+      while (node && node !== document.body) {
+        const t = node.textContent;
+        if (t.includes("الفريق الأحمر")) { team = "red";  break; }
+        if (t.includes("الفريق الأزرق")) { team = "blue"; break; }
+        node = node.parentElement;
+      }
+      if (!team) return;
+
+      chooseRole(team, role);
+      return;
+    }
+  });
 });
 
 // ===== تغيير الدور في اللوبي =====
@@ -506,7 +564,7 @@ function chooseRole(team, role) {
   }
 
   const startBtn = document.getElementById("start-game-btn");
-  if (isHost) startBtn.disabled = false;
+  if (isHost && startBtn) startBtn.disabled = false;
 }
 
 // ===== بدء اللعبة =====
