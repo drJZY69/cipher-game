@@ -1,6 +1,7 @@
 // ===== تهيئة Supabase =====
-const SUPABASE_URL = "https://yifgimztfhbyocdwrqjr.supabase.co"; // ثابتة لمشروعك (مصححة)
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZmdpbXp0ZmhieW9jZHdycWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MjAxNzYsImV4cCI6MjA3ODk5NjE3Nn0.g2809m0EjwpfHn9UzM4iPVhU6NAFAgB1HNs6D9ur4TQ";
+const SUPABASE_URL = "https://yifgimztfhbyocdwrqjr.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZmdpbXp0ZmhieW9jZHdycWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MjAxNzYsImV4cCI6MjA3ODk5NjE3Nn0.g2809m0EjwpfHn9UzM4iPVhU6NAFAgB1HNs6D9ur4TQ";
 
 let supa = null;
 if (typeof supabase !== "undefined") {
@@ -9,106 +10,71 @@ if (typeof supabase !== "undefined") {
   console.error("Supabase library not loaded! تأكد من وسم السكربت في index.html");
 }
 
+// فحص اتصال سريع فقط
 async function testSupabaseConnection() {
   if (!supa) {
     console.error("Supabase client is null – ما تم إنشاؤه.");
     return;
   }
-
   try {
-    const { data, error } = await supa.from("rooms").select("*").limit(1);
+    const { error } = await supa.from("rooms").select("id").limit(1);
     if (error) {
       console.error("Supabase connection ERROR:", error.message || error);
     } else {
-      console.log("Supabase connection OK. Sample rooms:", data);
+      console.log("Supabase connection OK.");
     }
   } catch (e) {
     console.error("Supabase fatal error:", e);
   }
 }
 
-// ===== دوال Supabase (غرف + لاعبين) =====
+// ===== دوال Supabase للغرف =====
 
 // إنشاء غرفة جديدة
-async function createRoomInDb(code, hostName, startingTeam) {
-  if (!supa) return null;
+async function createRoomInDb(code, hostName) {
+  if (!supa) return true; // لو ما فيه supabase نخلي اللعبة أوفلاين
 
   try {
-    const { data, error } = await supa
+    const { error } = await supa
       .from("rooms")
-      .insert({
-        code: code,
-        host_name: hostName,
-        starting_team: startingTeam,
-        current_team: startingTeam,
-        phase: "lobby"
-      })
-      .select()
-      .single();
+      .insert({ code: code, host_name: hostName });
 
     if (error) {
       console.error("createRoomInDb error:", error);
       showInfoOverlay("ما قدرنا ننشئ الغرفة في السيرفر، جرّب بعد شوي.");
-      return null;
+      return false;
     }
 
-    console.log("Room created in DB:", data);
-    return data;
+    console.log("Room created in DB:", code);
+    return true;
   } catch (e) {
     console.error("createRoomInDb fatal:", e);
     showInfoOverlay("صار خطأ غير متوقع أثناء إنشاء الغرفة.");
-    return null;
+    return false;
   }
 }
 
-// جلب غرفة برمزها
-async function fetchRoomByCode(code) {
-  if (!supa) return null;
+// التحقق إذا الكود موجود
+async function checkRoomExistsInDb(code) {
+  if (!supa) return true; // نخليها أوفلاين لو مافيه سيرفر
 
   try {
     const { data, error } = await supa
       .from("rooms")
-      .select("*")
+      .select("id")
       .eq("code", code)
-      .maybeSingle();
+      .limit(1);
 
     if (error) {
-      console.error("fetchRoomByCode error:", error);
-      return null;
+      console.error("checkRoomExistsInDb error:", error);
+      // ما نمنع اللاعب لو المشكلة من السيرفر
+      return true;
     }
 
-    return data; // لو ما فيه غرفة يرجع null
+    return data && data.length > 0;
   } catch (e) {
-    console.error("fetchRoomByCode fatal:", e);
-    return null;
-  }
-}
-
-// إضافة لاعب لجدول players
-async function addPlayerToRoom(code, name, team = null, role = null) {
-  if (!supa) return;
-
-  try {
-    const { data, error } = await supa
-      .from("players")
-      .insert({
-        room_code: code,
-        name: name,
-        team: team,
-        role: role
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("addPlayerToRoom error:", error);
-      showInfoOverlay("ما قدرنا نضيفك كلاعب في الغرفة، جرّب مرة ثانية.");
-      return;
-    }
-
-    console.log("Player added:", data);
-  } catch (e) {
-    console.error("addPlayerToRoom fatal:", e);
+    console.error("checkRoomExistsInDb fatal:", e);
+    return true;
   }
 }
 
@@ -131,7 +97,7 @@ let remainingRed = 0;
 let remainingBlue = 0;
 
 // نظام الدور والمرحلة
-let startingTeam = null;         // الفريق اللي يبدأ (اللي عنده 9 كروت)
+let startingTeam = null;         // الفريق الذي يبدأ (الذي يملك 9 كروت)
 let currentTeamTurn = null;      // "red" أو "blue"
 let phase = "clue";              // "clue" أو "guess"
 
@@ -140,8 +106,8 @@ let currentClueText = "";
 let currentClueTeam = null;      // "red" أو "blue"
 
 // التايمر
-let masterTimeLimit = 60;        // بالثواني
-let opsTimeLimit = 90;           // بالثواني
+let masterTimeLimit = 60;
+let opsTimeLimit = 90;
 let timerId = null;
 let timerRemaining = 0;
 
@@ -183,7 +149,7 @@ function stopTimer() {
   }
 }
 
-// 🎵 دالة تشغيل الصوتيات
+// صوتيات (حالياً بدون ملفات، بس نحافظ على الدالة)
 function playSfx(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -193,7 +159,7 @@ function playSfx(id) {
   } catch (_) {}
 }
 
-// توليد كود غرفة من 5 حروف إنجليزية
+// توليد كود غرفة من 5 حروف
 function generateRoomCode() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let code = "";
@@ -220,57 +186,57 @@ function updateRoomInfoUI() {
 
 // تحكم الهوست في الأزرار + الوقت
 function updateHostControlsUI() {
-  const startBtn = document.getElementById("start-game-btn");
-  const newRoundBtn = document.getElementById("new-round-btn");
-  const masterInput = document.getElementById("master-time-input");
-  const opsInput = document.getElementById("ops-time-input");
+  const startBtn   = document.getElementById("start-game-btn");
+  const newRoundBtn= document.getElementById("new-round-btn");
+  const masterInput= document.getElementById("master-time-input");
+  const opsInput   = document.getElementById("ops-time-input");
 
   if (startBtn) {
     if (isHost) startBtn.classList.remove("hidden");
-    else startBtn.classList.add("hidden");
+    else        startBtn.classList.add("hidden");
   }
 
   if (newRoundBtn) {
     if (isHost) newRoundBtn.classList.remove("hidden");
-    else newRoundBtn.classList.add("hidden");
+    else        newRoundBtn.classList.add("hidden");
   }
 
   if (masterInput) masterInput.disabled = !isHost;
-  if (opsInput) opsInput.disabled = !isHost;
+  if (opsInput)    opsInput.disabled    = !isHost;
 }
 
-// تحديث معلومات اللاعب في شاشة اللعبة
+// معلومات اللاعب في شاشة اللعبة
 function updatePlayerInfoUI() {
   document.getElementById("player-name-info").textContent = playerName || "لاعب";
 
   let teamLabel = "غير محدد";
-  if (playerTeam === "red") teamLabel = "الأحمر";
-  else if (playerTeam === "blue") teamLabel = "الأزرق";
+  if (playerTeam === "red")  teamLabel = "الأحمر";
+  if (playerTeam === "blue") teamLabel = "الأزرق";
   document.getElementById("player-team-info").textContent = teamLabel;
 
   let roleLabel = "غير محدد";
   if (playerRole === "spymaster") roleLabel = "Clue Cipher";
-  else if (playerRole === "operative") roleLabel = "Seekers Cipher";
+  if (playerRole === "operative") roleLabel = "Seekers Cipher";
   document.getElementById("player-role-info").textContent = roleLabel;
 }
 
-// تحديث معلومات الدور والمرحلة
+// معلومات الدور والمرحلة
 function updateTurnUI() {
-  const teamSpan = document.getElementById("turn-team-label");
+  const teamSpan  = document.getElementById("turn-team-label");
   const phaseSpan = document.getElementById("turn-phase-label");
 
-  if (currentTeamTurn === "red") teamSpan.textContent = "الفريق الأحمر";
+  if (currentTeamTurn === "red")  teamSpan.textContent = "الفريق الأحمر";
   else if (currentTeamTurn === "blue") teamSpan.textContent = "الفريق الأزرق";
   else teamSpan.textContent = "-";
 
-  if (phase === "clue") phaseSpan.textContent = "إرسال تلميح";
+  if (phase === "clue")  phaseSpan.textContent = "إرسال تلميح";
   else if (phase === "guess") phaseSpan.textContent = "اختيار البطاقات";
   else phaseSpan.textContent = "-";
 }
 
-// تحديث واجهة التلميح
+// واجهة التلميح
 function updateClueUI() {
-  const form = document.getElementById("clue-form");
+  const form         = document.getElementById("clue-form");
   const clueTextSpan = document.getElementById("clue-text");
   const clueTeamSpan = document.getElementById("clue-team");
 
@@ -280,16 +246,16 @@ function updateClueUI() {
     phase === "clue";
 
   if (canGiveClue) form.classList.remove("hidden");
-  else form.classList.add("hidden");
+  else             form.classList.add("hidden");
 
   clueTextSpan.textContent = currentClueText || "لا يوجد تلميح بعد";
 
-  if (currentClueTeam === "red") clueTeamSpan.textContent = "الفريق الأحمر";
+  if (currentClueTeam === "red")  clueTeamSpan.textContent = "الفريق الأحمر";
   else if (currentClueTeam === "blue") clueTeamSpan.textContent = "الفريق الأزرق";
   else clueTeamSpan.textContent = "-";
 }
 
-// توست التلميح / العد التنازلي
+// توست
 function showClueToast(text) {
   const toast = document.getElementById("clue-toast");
   if (!toast) return;
@@ -304,7 +270,7 @@ function showClueToast(text) {
   }, 1800);
 }
 
-// ===== اللوق =====
+// اللوق
 function logEvent(message) {
   const logContainer = document.getElementById("log-entries");
   if (!logContainer) return;
@@ -315,10 +281,10 @@ function logEvent(message) {
   logContainer.scrollTop = logContainer.scrollHeight;
 }
 
-// ===== Overlay للرسائل (ليس دورك / لا يمكن...) =====
+// Overlay للرسائل
 function showInfoOverlay(message) {
   const overlay = document.getElementById("info-overlay");
-  const text = document.getElementById("info-text");
+  const text    = document.getElementById("info-text");
   text.textContent = message;
   overlay.classList.remove("hidden");
 }
@@ -327,7 +293,7 @@ function closeInfoOverlay() {
   document.getElementById("info-overlay").classList.add("hidden");
 }
 
-// ===== فحص هل اللاعب يقدر يتفاعل مع الكروت الآن؟ =====
+// هل يقدر يلمس الكروت الآن؟
 function canInteractWithCards(showMessage) {
   if (playerRole !== "operative") {
     if (showMessage) showInfoOverlay("فقط Seekers Cipher يقدرون يتعاملون مع البطاقات.");
@@ -344,23 +310,17 @@ function canInteractWithCards(showMessage) {
   return true;
 }
 
-// ===== تايمر المراحل =====
+// تايمر
 function startPhaseTimer(phaseType) {
   stopTimer();
 
-  if (phaseType === "clue") {
-    timerRemaining = masterTimeLimit;
-  } else {
-    timerRemaining = opsTimeLimit;
-  }
-
+  timerRemaining = (phaseType === "clue") ? masterTimeLimit : opsTimeLimit;
   updateTimerLabel();
 
   timerId = setInterval(() => {
     timerRemaining--;
     updateTimerLabel();
 
-    // آخر 10 ثواني: صوت + رقم في النص
     if (timerRemaining > 0 && timerRemaining <= 10) {
       playSfx("sfx-tick");
       showClueToast(`${timerRemaining}`);
@@ -404,8 +364,7 @@ function handleTimerEnd() {
       updateClueUI();
       startPhaseTimer("guess");
     }
-  }
-  else if (phase === "guess") {
+  } else if (phase === "guess") {
     const oldTeam = currentTeamTurn;
     currentTeamTurn = currentTeamTurn === "red" ? "blue" : "red";
     phase = "clue";
@@ -424,36 +383,30 @@ function handleTimerEnd() {
 
 // ===== شاشة البداية: هوست / انضمام =====
 window.addEventListener("DOMContentLoaded", () => {
-  // نختبر Supabase
   testSupabaseConnection();
 
   const nicknameInput = document.getElementById("nickname-input");
-  const hostBtn = document.getElementById("btn-host");
-  const joinBtn = document.getElementById("btn-join");
+  const hostBtn       = document.getElementById("btn-host");
+  const joinBtn       = document.getElementById("btn-join");
   const joinCodeInput = document.getElementById("join-code-input");
 
-  // إنشاء غرفة (هوست)
+  // إنشاء غرفة
   hostBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
     playerName = name;
 
-    isHost = true;
+    isHost   = true;
     roomCode = generateRoomCode();
 
-    // نحدد الفريق الذي يبدأ (يتوافق مع منطق البورد)
     startingTeam = Math.random() < 0.5 ? "red" : "blue";
 
-    // إنشاء الغرفة في Supabase
-    const room = await createRoomInDb(roomCode, playerName, startingTeam);
-    if (!room) {
-      isHost = false;
+    const ok = await createRoomInDb(roomCode, playerName);
+    if (!ok) {
+      isHost   = false;
       roomCode = "";
       return;
     }
-
-    // إضافة الهوست لجدول اللاعبين
-    await addPlayerToRoom(roomCode, playerName, null, null);
 
     document.getElementById("player-name-label").textContent = playerName;
     updateRoomInfoUI();
@@ -462,7 +415,7 @@ window.addEventListener("DOMContentLoaded", () => {
     showSection("lobby-screen");
   };
 
-  // الانضمام إلى غرفة موجودة
+  // انضمام لغرفة
   joinBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
@@ -474,18 +427,14 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // نتأكد أن الغرفة موجودة
-    const room = await fetchRoomByCode(code);
-    if (!room) {
-      showInfoOverlay("ما وجدنا غرفة بهذا الرمز، تأكد أن الهوست أعطاك الكود الصحيح.");
+    const exists = await checkRoomExistsInDb(code);
+    if (!exists) {
+      showInfoOverlay("❌ عذراً، لا توجد غرفة بهذا الكود.\nتأكد من الكود أو خلي صاحبك ينشئ غرفة جديدة.");
       return;
     }
 
-    isHost = false;
+    isHost   = false;
     roomCode = code;
-
-    // إضافة اللاعب لجدول اللاعبين
-    await addPlayerToRoom(roomCode, playerName, null, null);
 
     document.getElementById("player-name-label").textContent = playerName;
     updateRoomInfoUI();
@@ -565,26 +514,25 @@ function startGame() {
   }
 
   const masterInput = document.getElementById("master-time-input");
-  const opsInput = document.getElementById("ops-time-input");
+  const opsInput    = document.getElementById("ops-time-input");
 
   const masterVal = parseInt(masterInput.value, 10);
-  const opsVal = parseInt(opsInput.value, 10);
+  const opsVal    = parseInt(opsInput.value, 10);
 
   masterTimeLimit = isNaN(masterVal) ? 60 : masterVal;
-  opsTimeLimit = isNaN(opsVal) ? 90 : opsVal;
+  opsTimeLimit    = isNaN(opsVal) ? 90 : opsVal;
 
   document.querySelector(".box").classList.add("corner");
 
   updatePlayerInfoUI();
 
   showSection("game-area");
-
   updateHostControlsUI();
 
   startNewRoundFlow();
 }
 
-// بدء جولة جديدة كاملة
+// جولة جديدة
 function startNewRoundFlow() {
   const overlay = document.getElementById("result-overlay");
   overlay.classList.add("hidden");
@@ -595,7 +543,7 @@ function startNewRoundFlow() {
   setupBoard();
 
   currentTeamTurn = startingTeam;
-  phase = "clue";
+  phase          = "clue";
   currentClueText = "";
   currentClueTeam = null;
 
@@ -607,7 +555,7 @@ function startNewRoundFlow() {
   startPhaseTimer("clue");
 }
 
-// 🔴 إنهاء الجولة والرجوع للوبي
+// إنهاء الجولة والرجوع للوبي
 function endRoundAndReturn() {
   if (!isHost) {
     showInfoOverlay("فقط الهوست يقدر إنهاء الجولة والرجوع إلى اللوبي.");
@@ -627,14 +575,14 @@ function endRoundAndReturn() {
   updateHostControlsUI();
 }
 
-// ===== كلمات عشوائية =====
+// كلمات عشوائية
 function pick25Words() {
   return [...ALL_WORDS].sort(() => Math.random() - 0.5).slice(0, 25);
 }
 
-// ===== توزيع الألوان 9/8 + حيادي + قاتل =====
+// توزيع الألوان
 function generateTeamLayout() {
-  const first = Math.random() < 0.5 ? "red" : "blue";
+  const first  = Math.random() < 0.5 ? "red" : "blue";
   const second = first === "red" ? "blue" : "red";
 
   const arr = [
@@ -652,12 +600,12 @@ function generateTeamLayout() {
   return { layout: arr, firstTeam: first };
 }
 
-// ===== تجهيز البورد =====
+// تجهيز البورد
 function setupBoard() {
   const board = document.getElementById("board");
   board.innerHTML = "";
 
-  const words = pick25Words();
+  const words        = pick25Words();
   const { layout, firstTeam } = generateTeamLayout();
   startingTeam = firstTeam;
 
@@ -668,7 +616,7 @@ function setupBoard() {
     sus: false
   }));
 
-  remainingRed = layout.filter(x => x === "red").length;
+  remainingRed  = layout.filter(x => x === "red").length;
   remainingBlue = layout.filter(x => x === "blue").length;
 
   boardState.forEach((card, i) => {
@@ -688,9 +636,9 @@ function setupBoard() {
     };
 
     if (playerRole === "spymaster") {
-      if (card.team === "red") div.classList.add("spy-map-red");
-      if (card.team === "blue") div.classList.add("spy-map-blue");
-      if (card.team === "neutral") div.classList.add("spy-map-neutral");
+      if (card.team === "red")      div.classList.add("spy-map-red");
+      if (card.team === "blue")     div.classList.add("spy-map-blue");
+      if (card.team === "neutral")  div.classList.add("spy-map-neutral");
       if (card.team === "assassin") div.classList.add("spy-map-assassin");
     }
 
@@ -698,13 +646,13 @@ function setupBoard() {
   });
 }
 
-// ===== sus (كلك عادي) =====
+// sus marker
 function updateSusMarker(index) {
   const card = boardState[index];
   const susEl = document.querySelector(`.card[data-index="${index}"] .sus-marker`);
   if (!susEl) return;
   if (card.sus && !card.revealed) susEl.classList.remove("hidden");
-  else susEl.classList.add("hidden");
+  else                            susEl.classList.add("hidden");
 }
 
 function handleCardClick(index) {
@@ -717,27 +665,25 @@ function handleCardClick(index) {
   updateSusMarker(index);
 }
 
-// ===== دبل كلك = كشف البطاقة =====
+// دبل كلك = كشف البطاقة
 function handleCardDoubleClick(index) {
   if (!canInteractWithCards(true)) return;
   revealCard(index);
 }
 
-// ===== إرسال التلميح من Clue Cipher =====
+// إرسال التلميح
 function sendClue() {
-  if (
-    !(playerRole === "spymaster" &&
-      playerTeam === currentTeamTurn &&
-      phase === "clue")
-  ) {
+  if (!(playerRole === "spymaster" &&
+        playerTeam === currentTeamTurn &&
+        phase === "clue")) {
     showInfoOverlay("فقط Clue Cipher للفريق الحالي يقدر يرسل التلميح في مرحلته.");
     return;
   }
 
-  const wordInput = document.getElementById("clue-word-input");
+  const wordInput  = document.getElementById("clue-word-input");
   const countInput = document.getElementById("clue-count-input");
 
-  let word = wordInput.value.trim();
+  let word  = wordInput.value.trim();
   let count = parseInt(countInput.value, 10);
 
   if (!word) {
@@ -758,8 +704,6 @@ function sendClue() {
   wordInput.value = "";
 
   updateClueUI();
-
-  // صوت و توست للتلميح
   playSfx("sfx-clue");
   showClueToast(`تلميح: ${currentClueText} — للفريق ${teamLabel}`);
 
@@ -769,13 +713,13 @@ function sendClue() {
   startPhaseTimer("guess");
 }
 
-// ===== كشف بطاقة =====
+// كشف بطاقة
 function revealCard(i) {
   const card = boardState[i];
   if (!card || card.revealed) return;
 
   card.revealed = true;
-  card.sus = false;
+  card.sus      = false;
   updateSusMarker(i);
 
   const el = document.querySelector(`.card[data-index="${i}"]`);
@@ -791,21 +735,18 @@ function revealCard(i) {
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة حمراء).`);
     playSfx(correct ? "sfx-card-correct" : "sfx-card-wrong");
     checkWin();
-  }
-  else if (card.team === "blue") {
+  } else if (card.team === "blue") {
     el.classList.add("revealed-blue");
     remainingBlue--;
     const correct = (currentTeamTurn === "blue");
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة زرقاء).`);
     playSfx(correct ? "sfx-card-correct" : "sfx-card-wrong");
     checkWin();
-  }
-  else if (card.team === "neutral") {
+  } else if (card.team === "neutral") {
     el.classList.add("revealed-neutral");
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة حيادية).`);
     playSfx("sfx-card-wrong");
-  }
-  else if (card.team === "assassin") {
+  } else if (card.team === "assassin") {
     el.classList.add("revealed-assassin");
     logEvent(`☠ [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة قاتل!).`);
     playSfx("sfx-assassin");
@@ -813,21 +754,18 @@ function revealCard(i) {
   }
 }
 
-// ===== التحقق من الفوز =====
+// فحص الفوز
 function checkWin() {
-  if (remainingRed === 0) {
-    showResult("red");
-  } else if (remainingBlue === 0) {
-    showResult("blue");
-  }
+  if (remainingRed === 0)  showResult("red");
+  if (remainingBlue === 0) showResult("blue");
 }
 
-// ===== شاشة الفوز/الخسارة =====
+// شاشة النتيجة
 function showResult(type) {
   stopTimer();
 
   const overlay = document.getElementById("result-overlay");
-  const text = document.getElementById("result-text");
+  const text    = document.getElementById("result-text");
 
   overlay.classList.remove("hidden");
 
@@ -835,24 +773,21 @@ function showResult(type) {
     overlay.style.background = "rgba(255,0,0,0.35)";
     text.textContent = "🔥 مبروك! الفريق الأحمر فاز!";
     if (playerTeam === "red") playSfx("sfx-win");
-    else playSfx("sfx-lose");
-  }
-  else if (type === "blue") {
+    else                      playSfx("sfx-lose");
+  } else if (type === "blue") {
     overlay.style.background = "rgba(0,0,255,0.35)";
     text.textContent = "🔥 مبروك! الفريق الأزرق فاز!";
     if (playerTeam === "blue") playSfx("sfx-win");
-    else playSfx("sfx-lose");
-  }
-  else {
+    else                       playSfx("sfx-lose");
+  } else {
     overlay.style.background = "rgba(0,0,0,0.8)";
     text.textContent = "☠ خسارة! تم اختيار بطاقة القاتل!";
-    // الفريق اللي كان دوره هو اللي خسر غالباً
     if (playerTeam === currentTeamTurn) playSfx("sfx-lose");
-    else playSfx("sfx-win");
+    else                                playSfx("sfx-win");
   }
 }
 
-// رجوع إلى اللوبي بعد النتيجة
+// رجوع للوبي بعد النتيجة
 function returnToLobbyFromResult() {
   stopTimer();
   const overlay = document.getElementById("result-overlay");
