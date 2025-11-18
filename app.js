@@ -9,7 +9,6 @@ if (typeof supabase !== "undefined") {
   console.error("Supabase library not loaded! تأكد من وسم السكربت في index.html");
 }
 
-// اختبار بسيط نتأكد Supabase شغّال
 async function testSupabaseConnection() {
   if (!supa) {
     console.error("Supabase client is null – ما تم إنشاؤه.");
@@ -27,6 +26,8 @@ async function testSupabaseConnection() {
     console.error("Supabase fatal error:", e);
   }
 }
+
+// ===== كود اللعبة =====
 
 console.log("CIPHER Loaded");
 
@@ -73,19 +74,7 @@ const ALL_WORDS = [
   "ضحك","حزن","خوف","شجاعة","حقيقة","خيانة","أمل","يأس","نور","ظلام"
 ];
 
-// ===== أدوات عامة للصوت =====
-function playSfx(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  try {
-    el.currentTime = 0;
-    el.play();
-  } catch (e) {
-    // لو المتصفح منع التشغيل التلقائي
-  }
-}
-
-// === أدوات واجهة عامة ===
+// ===== أدوات واجهة عامة =====
 function showSection(id) {
   document.querySelectorAll(".section").forEach(sec => sec.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
@@ -102,25 +91,21 @@ function updateTimerLabel() {
   if (el) el.textContent = formatTime(timerRemaining);
 }
 
-// تحديث العد التنازلي البصري
-function updateCountdownOverlay() {
-  const overlay = document.getElementById("countdown-overlay");
-  const numEl = document.getElementById("countdown-number");
-  if (!overlay || !numEl) return;
-
-  if (timerRemaining <= 10 && timerRemaining > 0) {
-    overlay.classList.remove("hidden");
-    numEl.textContent = timerRemaining;
-  } else {
-    overlay.classList.add("hidden");
-  }
-}
-
 function stopTimer() {
   if (timerId) {
     clearInterval(timerId);
     timerId = null;
   }
+}
+
+// 🎵 دالة تشغيل الصوتيات
+function playSfx(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    el.currentTime = 0;
+    el.play().catch(() => {});
+  } catch (_) {}
 }
 
 // توليد كود غرفة من 5 حروف إنجليزية
@@ -219,7 +204,7 @@ function updateClueUI() {
   else clueTeamSpan.textContent = "-";
 }
 
-// توست التلميح
+// توست التلميح / العد التنازلي
 function showClueToast(text) {
   const toast = document.getElementById("clue-toast");
   if (!toast) return;
@@ -285,15 +270,15 @@ function startPhaseTimer(phaseType) {
   }
 
   updateTimerLabel();
-  updateCountdownOverlay();
 
   timerId = setInterval(() => {
     timerRemaining--;
     updateTimerLabel();
-    updateCountdownOverlay();
 
-    if (timerRemaining <= 10 && timerRemaining > 0) {
-      playSfx("sfx-countdown");
+    // آخر 10 ثواني: صوت + رقم في النص
+    if (timerRemaining > 0 && timerRemaining <= 10) {
+      playSfx("sfx-tick");
+      showClueToast(`${timerRemaining}`);
     }
 
     if (timerRemaining <= 0) {
@@ -312,17 +297,6 @@ function clearAllSusMarkers() {
 }
 
 function handleTimerEnd() {
-  // افكت نص "انتهى الدور" بالنص
-  const cdOverlay = document.getElementById("countdown-overlay");
-  const cdNumber = document.getElementById("countdown-number");
-  if (cdOverlay && cdNumber) {
-    cdOverlay.classList.remove("hidden");
-    cdNumber.textContent = "انتهى الدور";
-    setTimeout(() => {
-      cdOverlay.classList.add("hidden");
-    }, 1200);
-  }
-
   if (phase === "clue") {
     if (!currentClueText || currentClueTeam !== currentTeamTurn) {
       const oldTeam = currentTeamTurn;
@@ -331,12 +305,13 @@ function handleTimerEnd() {
       currentClueText = "";
       currentClueTeam = null;
       clearAllSusMarkers();
-      logEvent(`⏰ انتهى وقت التلميح للفريق ${oldTeam === "red" ? "الأحمر" : "الأزرق"}، تم تمرير الدور.`);
+      logEvent(`⏰ انتهى وقت التلميح للفريق ${oldTeam === "red" ? "الأحمر" : "الأزرق"}، تم تمرير الدور للفريق الآخر.`);
+      playSfx("sfx-turn-change");
+      showClueToast("انتهى الوقت، الدور للفريق الآخر");
 
       updateTurnUI();
       updateClueUI();
       startPhaseTimer("clue");
-      playSfx("sfx-turn");
     } else {
       phase = "guess";
       clearAllSusMarkers();
@@ -353,17 +328,18 @@ function handleTimerEnd() {
     currentClueTeam = null;
     clearAllSusMarkers();
     logEvent(`⏰ انتهى وقت اختيار البطاقات للفريق ${oldTeam === "red" ? "الأحمر" : "الأزرق"}، الدور ينتقل للفريق الآخر.`);
+    playSfx("sfx-turn-change");
+    showClueToast("انتهى الوقت، الدور للفريق الآخر");
 
     updateTurnUI();
     updateClueUI();
     startPhaseTimer("clue");
-    playSfx("sfx-turn");
   }
 }
 
 // ===== شاشة البداية: هوست / انضمام =====
 window.addEventListener("DOMContentLoaded", () => {
-  // نختبر اتصال Supabase
+  // نختبر Supabase
   testSupabaseConnection();
 
   const nicknameInput = document.getElementById("nickname-input");
@@ -497,7 +473,7 @@ function startGame() {
   startNewRoundFlow();
 }
 
-// بدء جولة جديدة كاملة (داخلياً بعد startGame)
+// بدء جولة جديدة كاملة
 function startNewRoundFlow() {
   const overlay = document.getElementById("result-overlay");
   overlay.classList.add("hidden");
@@ -513,9 +489,7 @@ function startNewRoundFlow() {
   currentClueTeam = null;
 
   logEvent(`🚩 بدء جولة جديدة. الفريق الذي يبدأ: ${currentTeamTurn === "red" ? "الأحمر" : "الأزرق"}.`);
-
-  playSfx("sfx-roundstart");
-  playSfx("sfx-turn");
+  playSfx("sfx-round-start");
 
   updateTurnUI();
   updateClueUI();
@@ -674,8 +648,9 @@ function sendClue() {
 
   updateClueUI();
 
-  showClueToast(`تلميح: ${currentClueText} — للفريق ${teamLabel}`);
+  // صوت و توست للتلميح
   playSfx("sfx-clue");
+  showClueToast(`تلميح: ${currentClueText} — للفريق ${teamLabel}`);
 
   phase = "guess";
   clearAllSusMarkers();
@@ -697,39 +672,32 @@ function revealCard(i) {
   el.className = "card";
 
   const teamLabelOp = playerTeam === "red" ? "الأحمر" : "الأزرق";
-  const isMyTurn = (playerTeam === currentTeamTurn);
 
   if (card.team === "red") {
     el.classList.add("revealed-red");
     remainingRed--;
+    const correct = (currentTeamTurn === "red");
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة حمراء).`);
-    if (isMyTurn) {
-      if (card.team === currentTeamTurn) playSfx("sfx-correct");
-      else playSfx("sfx-wrong");
-    }
+    playSfx(correct ? "sfx-card-correct" : "sfx-card-wrong");
     checkWin();
   }
   else if (card.team === "blue") {
     el.classList.add("revealed-blue");
     remainingBlue--;
+    const correct = (currentTeamTurn === "blue");
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة زرقاء).`);
-    if (isMyTurn) {
-      if (card.team === currentTeamTurn) playSfx("sfx-correct");
-      else playSfx("sfx-wrong");
-    }
+    playSfx(correct ? "sfx-card-correct" : "sfx-card-wrong");
     checkWin();
   }
   else if (card.team === "neutral") {
     el.classList.add("revealed-neutral");
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة حيادية).`);
-    if (isMyTurn) {
-      playSfx("sfx-wrong");
-    }
+    playSfx("sfx-card-wrong");
   }
   else if (card.team === "assassin") {
     el.classList.add("revealed-assassin");
     logEvent(`☠ [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة قاتل!).`);
-    playSfx("sfx-lose");
+    playSfx("sfx-assassin");
     showResult("assassin");
   }
 }
@@ -755,17 +723,21 @@ function showResult(type) {
   if (type === "red") {
     overlay.style.background = "rgba(255,0,0,0.35)";
     text.textContent = "🔥 مبروك! الفريق الأحمر فاز!";
-    playSfx("sfx-win");
+    if (playerTeam === "red") playSfx("sfx-win");
+    else playSfx("sfx-lose");
   }
   else if (type === "blue") {
     overlay.style.background = "rgba(0,0,255,0.35)";
     text.textContent = "🔥 مبروك! الفريق الأزرق فاز!";
-    playSfx("sfx-win");
+    if (playerTeam === "blue") playSfx("sfx-win");
+    else playSfx("sfx-lose");
   }
   else {
     overlay.style.background = "rgba(0,0,0,0.8)";
     text.textContent = "☠ خسارة! تم اختيار بطاقة القاتل!";
-    playSfx("sfx-lose");
+    // الفريق اللي كان دوره هو اللي خسر غالباً
+    if (playerTeam === currentTeamTurn) playSfx("sfx-lose");
+    else playSfx("sfx-win");
   }
 }
 
