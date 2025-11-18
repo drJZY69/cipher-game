@@ -189,7 +189,6 @@
     <div id="clue-toast" class="clue-toast hidden"></div>
 
     <div class="game-buttons">
-      <!-- هذا الزر يتحكم فيه app.js عن طريق id = end-round-btn -->
       <button id="end-round-btn">إنهاء الجولة والرجوع إلى اللوبي</button>
     </div>
 
@@ -207,6 +206,19 @@
       <div class="overlay-logo">CIPHER</div>
       <div id="result-text" class="overlay-text"></div>
       <button id="result-to-lobby-btn">رجوع إلى اللوبي</button>
+    </div>
+  </div>
+
+  <!-- شاشة حوار إدخال (تغيير اسم / فريق) -->
+  <div id="dialog-overlay" class="overlay hidden">
+    <div class="overlay-box">
+      <div class="overlay-logo">CIPHER</div>
+      <div id="dialog-text" class="overlay-text"></div>
+      <input id="dialog-input" class="dialog-input" type="text" />
+      <div class="dialog-buttons">
+        <button id="dialog-confirm-btn">موافق</button>
+        <button id="dialog-cancel-btn">إلغاء</button>
+      </div>
     </div>
   </div>
 
