@@ -42,7 +42,13 @@ async function createRoomInDb(code, hostName, startingTeam) {
         host_name: hostName,
         starting_team: startingTeam,
         current_team: startingTeam,
-        phase: "lobby"
+        phase: "lobby",
+        // نحط حالة بورد فاضية عشان ما يكون العمود null
+        board_state: {
+          cards: [],
+          remainingRed: 0,
+          remainingBlue: 0
+        }
       })
       .select()
       .single();
@@ -839,3 +845,4 @@ function returnToLobbyFromResult() {
 
   updateHostControlsUI();
 }
+
