@@ -5,10 +5,9 @@
   <title>CIPHER - لعبة الكلمات السرّية</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- ربط ملف التصميم الخارجي -->
   <link rel="stylesheet" href="style.css">
 
-  <!-- مكتبة Supabase JS (عشان نقدر نتصل بقاعدة البيانات) -->
+  <!-- مكتبة Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 
@@ -152,7 +151,6 @@
 
     <!-- نظام التلميح -->
     <div id="clue-panel" class="clue-panel">
-      <!-- يظهر فقط للـ Clue Cipher الصحيح وفي مرحلته -->
       <div id="clue-form" class="clue-form hidden">
         <label>اكتب التلميح:</label>
         <br>
@@ -161,7 +159,6 @@
         <button onclick="sendClue()">إرسال التلميح</button>
       </div>
 
-      <!-- يظهر للجميع -->
       <div class="clue-display">
         التلميح الحالي:
         <span id="clue-text">لا يوجد تلميح بعد</span>
@@ -170,18 +167,14 @@
       </div>
     </div>
 
-    <!-- توست / أنيميشن التلميح و العد التنازلي -->
     <div id="clue-toast" class="clue-toast hidden"></div>
 
-    <!-- أزرار التحكم -->
     <div class="game-buttons">
       <button id="new-round-btn" onclick="endRoundAndReturn()">إنهاء الجولة والرجوع إلى اللوبي</button>
     </div>
 
-    <!-- البورد -->
     <div id="board" class="board"></div>
 
-    <!-- اللوق -->
     <div id="log-panel" class="log-panel">
       <h3>السجل</h3>
       <div id="log-entries"></div>
@@ -197,7 +190,7 @@
     </div>
   </div>
 
-  <!-- شاشة رسائل (ليس دورك / لا يمكن الاختيار...) -->
+  <!-- شاشة رسائل عامة (مثل مو دورك / الكود غلط) -->
   <div id="info-overlay" class="overlay hidden">
     <div class="overlay-box">
       <div class="overlay-logo">CIPHER</div>
@@ -215,8 +208,8 @@
   <audio id="sfx-assassin"      src="sfx/lose.mp3"></audio>
   <audio id="sfx-win"           src="sfx/win.mp3"></audio>
   <audio id="sfx-lose"          src="sfx/lose.mp3"></audio>
-
-  <script src="app.js"></script>
+  
+<script src="app.js"></script>
+  
 </body>
 </html>
-
