@@ -12,13 +12,13 @@
 
   <!-- الهيدر -->
   <div class="box">
-    <div class="logo">CIPHER</div>
+    <div class="logo cipher-title">CIPHER</div>
     <div class="subtitle">لعبة drJZY بنكهة Codenames العربية</div>
   </div>
 
   <!-- شاشة البداية: لقب + هوست / انضمام -->
   <div id="welcome-screen" class="section">
-    <h2>أهلاً بك في CIPHER</h2>
+    <h2 class="cipher-title">أهلاً بك في CIPHER</h2>
     <p>اكتب لقبك أولاً:</p>
 
     <input id="nickname-input" class="big-input" type="text" placeholder="مثال: drJZY" />
@@ -37,7 +37,7 @@
 
   <!-- شاشة اللوبي -->
   <div id="lobby-screen" class="section hidden">
-    <h2>اللوبي</h2>
+    <h2 class="cipher-title">اللوبي</h2>
 
     <p>اللاعب: <span id="player-name-label"></span></p>
 
@@ -60,7 +60,10 @@
       </div>
     </div>
 
-    <button class="leave-btn" onclick="leaveRole()">🡸 خروج من الدور الحالي (Spectator)</button>
+    <!-- زر خروج من الدور الحالي -->
+    <button id="btn-leave-role" class="leave-btn">
+      🡸 خروج من الدور الحالي (Spectator)
+    </button>
 
     <div class="teams-row">
 
@@ -71,8 +74,7 @@
         <div class="role-block">
           <div class="role-title">Clue Cipher</div>
           <div class="role-value" id="blue-spymaster-name">غير معيّن</div>
-          <button class="join-btn"
-                  onclick="chooseRole('blue','spymaster')">
+          <button class="join-btn" id="btn-blue-spymaster">
             انضم كـ Clue Cipher
           </button>
         </div>
@@ -80,8 +82,7 @@
         <div class="role-block">
           <div class="role-title">Seekers Cipher</div>
           <ul id="blue-operatives-list" class="ops-list"></ul>
-          <button class="join-btn"
-                  onclick="chooseRole('blue','operative')">
+          <button class="join-btn" id="btn-blue-operative">
             انضم كـ Seekers Cipher
           </button>
         </div>
@@ -94,8 +95,7 @@
         <div class="role-block">
           <div class="role-title">Clue Cipher</div>
           <div class="role-value" id="red-spymaster-name">غير معيّن</div>
-          <button class="join-btn"
-                  onclick="chooseRole('red','spymaster')">
+          <button class="join-btn" id="btn-red-spymaster">
             انضم كـ Clue Cipher
           </button>
         </div>
@@ -103,8 +103,7 @@
         <div class="role-block">
           <div class="role-title">Seekers Cipher</div>
           <ul id="red-operatives-list" class="ops-list"></ul>
-          <button class="join-btn"
-                  onclick="chooseRole('red','operative')">
+          <button class="join-btn" id="btn-red-operative">
             انضم كـ Seekers Cipher
           </button>
         </div>
@@ -117,11 +116,11 @@
       دور: <span id="player-role-label">غير محدد</span>
     </p>
 
-    <button id="start-game-btn" onclick="startGame()" disabled>
+    <button id="start-game-btn" disabled>
       بدء اللعبة
     </button>
 
-    <!-- زر دخول اللعبة (Spectator / لاعب عادي) -->
+    <!-- زر دخول اللعبة (Spectator) -->
     <button id="btn-enter-game">
       🎮 دخول للعبة (Spectator)
     </button>
@@ -129,6 +128,20 @@
 
   <!-- شاشة اللعبة -->
   <div id="game-area" class="section hidden">
+
+    <!-- شريط علوي داخل الجولة (تغيير فريق / اسم + كود الغرفة) -->
+    <div id="in-game-topbar">
+      <button id="btn-change-team" class="topbar-btn">
+        تغيير الفريق (Seekers)
+      </button>
+      <button id="btn-change-name" class="topbar-btn">
+        تغيير الاسم
+      </button>
+      <div id="in-game-room-code" class="room-pill hidden">
+        <span class="pill-label">كود الغرفة:</span>
+        <span id="in-game-room-code-text" class="pill-code">-----</span>
+      </div>
+    </div>
 
     <!-- معلومات اللاعب -->
     <div class="game-info">
@@ -172,7 +185,8 @@
     <div id="clue-toast" class="clue-toast hidden"></div>
 
     <div class="game-buttons">
-      <button id="new-round-btn" onclick="endRoundAndReturn()">إنهاء الجولة والرجوع إلى اللوبي</button>
+      <!-- هذا الزر يتحكم فيه app.js عن طريق id = end-round-btn -->
+      <button id="end-round-btn">إنهاء الجولة والرجوع إلى اللوبي</button>
     </div>
 
     <div id="board" class="board"></div>
@@ -188,7 +202,7 @@
     <div class="overlay-box">
       <div class="overlay-logo">CIPHER</div>
       <div id="result-text" class="overlay-text"></div>
-      <button onclick="returnToLobbyFromResult()">رجوع إلى اللوبي</button>
+      <button id="result-to-lobby-btn">رجوع إلى اللوبي</button>
     </div>
   </div>
 
@@ -197,7 +211,7 @@
     <div class="overlay-box">
       <div class="overlay-logo">CIPHER</div>
       <div id="info-text" class="overlay-text"></div>
-      <button onclick="closeInfoOverlay()">حسناً</button>
+      <button id="info-ok-btn">حسناً</button>
     </div>
   </div>
 
@@ -211,7 +225,7 @@
   <audio id="sfx-win"           src="sfx/win.mp3"></audio>
   <audio id="sfx-lose"          src="sfx/lose.mp3"></audio>
 
-  <!-- سكربت اللعبة (ES Module مع Firebase داخل app.js) -->
+  <!-- سكربت اللعبة -->
   <script type="module" src="app.js"></script>
 
 </body>
