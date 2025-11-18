@@ -1,3 +1,35 @@
+// ===== تهيئة Supabase (جديدة) =====
+const SUPABASE_URL = "https://yifgimztfhbyocdwrqjr.supabase.co"; // ثابتة لمشروعك
+const SUPABASE_ANON_KEY = "حط_المفتاح_العام_anon_حقك_هنا_بين_علامتي_تنصيص";
+
+let supa = null;
+if (typeof supabase !== "undefined") {
+  supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} else {
+  console.error("Supabase library not loaded! تأكد من وسم السكربت في index.html");
+}
+
+// اختبار بسيط نتأكد Supabase شغّال (نشتغله عند تحميل الصفحة)
+async function testSupabaseConnection() {
+  if (!supa) {
+    console.error("Supabase client is null – ما تم إنشاؤه.");
+    return;
+  }
+
+  try {
+    const { data, error } = await supa.from("rooms").select("*").limit(1);
+    if (error) {
+      console.error("Supabase connection ERROR:", error.message || error);
+    } else {
+      console.log("Supabase connection OK. Sample rooms:", data);
+    }
+  } catch (e) {
+    console.error("Supabase fatal error:", e);
+  }
+}
+
+// ===== بقية كود اللعبة الأصلي =====
+
 console.log("CIPHER Loaded");
 
 // معلومات اللاعب
@@ -288,6 +320,9 @@ function handleTimerEnd() {
 
 // ===== شاشة البداية: هوست / انضمام =====
 window.addEventListener("DOMContentLoaded", () => {
+  // أول شيء: نختبر اتصال Supabase
+  testSupabaseConnection();
+
   const nicknameInput = document.getElementById("nickname-input");
   const hostBtn = document.getElementById("btn-host");
   const joinBtn = document.getElementById("btn-join");
