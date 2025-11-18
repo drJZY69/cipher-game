@@ -607,33 +607,66 @@ function changeTeamInGame() {
   updatePlayerInfoUI();
 }
 
-// ===== تغيير الاسم أثناء الجولة =====
+// ===== تغيير الاسم أثناء الجولة (Overlay بشكل CIPHER) =====
 function changeNameInGame() {
-  const oldName = playerName || "لاعب مجهول";
-  const newNameRaw = prompt("اكتب الاسم الجديد:", oldName);
-  if (newNameRaw === null) return;
-
-  const newName = newNameRaw.trim() || "لاعب مجهول";
-  playerName = newName;
-
-  const label = document.getElementById("player-name-label");
-  if (label) label.textContent = playerName;
-
-  updatePlayerInfoUI();
-
-  // تحديث الاسم في اللوبي
-  if (playerRole === "spymaster" && playerTeam) {
-    const id = playerTeam === "blue" ? "blue-spymaster-name" : "red-spymaster-name";
-    const span = document.getElementById(id);
-    if (span) span.textContent = playerName;
-  } else if (playerRole === "operative" && playerTeam) {
-    const listId = playerTeam === "blue" ? "blue-operatives-list" : "red-operatives-list";
-    const list = document.getElementById(listId);
-    if (list && list.children.length > 0) {
-      // بما إن هذا المتصفح يمثل لاعب واحد، نغيّر أول عنصر
-      list.children[0].textContent = playerName;
-    }
+  let overlay = document.getElementById("rename-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "rename-overlay";
+    overlay.className = "overlay hidden";
+    overlay.innerHTML = `
+      <div class="overlay-box">
+        <div class="overlay-logo">CIPHER</div>
+        <div class="overlay-text">اكتب الاسم الجديد:</div>
+        <input id="rename-input" class="overlay-input" type="text" />
+        <div class="overlay-actions">
+          <button id="rename-save-btn">حفظ</button>
+          <button id="rename-cancel-btn">إلغاء</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
   }
+
+  overlay.classList.remove("hidden");
+
+  const input = document.getElementById("rename-input");
+  input.value = playerName || "لاعب مجهول";
+  input.focus();
+  input.select();
+
+  const applyName = () => {
+    let newName = input.value.trim();
+    if (!newName) newName = "لاعب مجهول";
+    playerName = newName;
+
+    const labelLobby = document.getElementById("player-name-label");
+    const labelGame  = document.getElementById("player-name-info");
+    if (labelLobby) labelLobby.textContent = playerName;
+    if (labelGame)  labelGame.textContent  = playerName;
+
+    // تحديث الاسم في اللوبي حسب الدور
+    if (playerRole === "spymaster" && playerTeam) {
+      const id = playerTeam === "blue" ? "blue-spymaster-name" : "red-spymaster-name";
+      const span = document.getElementById(id);
+      if (span) span.textContent = playerName;
+    } else if (playerRole === "operative" && playerTeam) {
+      const listId = playerTeam === "blue" ? "blue-operatives-list" : "red-operatives-list";
+      const list = document.getElementById(listId);
+      if (list && list.children.length > 0) {
+        // لاعب واحد من هذا المتصفح
+        list.children[0].textContent = playerName;
+      }
+    }
+
+    updatePlayerInfoUI();
+    overlay.classList.add("hidden");
+  };
+
+  document.getElementById("rename-save-btn").onclick = applyName;
+  document.getElementById("rename-cancel-btn").onclick = () => {
+    overlay.classList.add("hidden");
+  };
 }
 
 // ===== بدء اللعبة =====
@@ -944,3 +977,12 @@ function returnToLobbyFromResult() {
 
   updateHostControlsUI();
 }
+
+// ===== ربط الدوال مع window عشان onclick في HTML =====
+window.sendClue                 = sendClue;
+window.returnToLobbyFromResult  = returnToLobbyFromResult;
+window.closeInfoOverlay         = closeInfoOverlay;
+window.leaveRole                = leaveRole;
+window.chooseRole               = chooseRole;
+window.startGame                = startGame;
+window.endRoundAndReturn        = endRoundAndReturn;
