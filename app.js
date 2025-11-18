@@ -1,131 +1,34 @@
-// ===== تهيئة Firebase + Firestore =====
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  collection,
-  addDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+// ===== وضع أوفلاين بدون سيرفر (لا Supabase ولا Firebase) =====
+console.log("CIPHER Loaded (OFFLINE MODE)");
 
-// الإعدادات من لوحة Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyB2OQo-eP3L_CzUbYjzqP7AaM1i8-_kXNs",
-  authDomain: "cipher-game-9607e.firebaseapp.com",
-  projectId: "cipher-game-9607e",
-  storageBucket: "cipher-game-9607e.firebasestorage.app",
-  messagingSenderId: "833688921550",
-  appId: "1:833688921550:web:9e265dfc1cc5bcde58779f"
-};
-
-// تشغيل Firebase + Firestore
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
-// فحص اتصال سريع
-async function testFirebaseConnection() {
-  try {
-    const pingRef = doc(db, "meta", "ping");
-    await setDoc(
-      pingRef,
-      { lastPing: Date.now() },
-      { merge: true }
-    );
-    console.log("Firebase connection OK.");
-  } catch (e) {
-    console.error("Firebase connection ERROR:", e);
-  }
+// دوال سيرفر وهمية عشان ما توقف اللعبة
+async function testSupabaseConnection() {
+  console.log("Backend disabled: اللعبة تعمل أوفلاين فقط.");
 }
 
-// ===== دوال Firestore للغرف واللاعبين =====
-
-// إنشاء غرفة جديدة في rooms
 async function createRoomInDb(code, hostName, startTeam) {
-  const safeStart = startTeam || "red";
-
-  try {
-    const roomRef = doc(db, "rooms", code);
-
-    await setDoc(roomRef, {
-      code: code,
-      host_name: hostName,
-      starting_team: safeStart,
-      current_team: safeStart,
-      phase: "lobby",
-      board_state: [],
-      created_at: serverTimestamp()
-    });
-
-    console.log("Room created in DB:", { code, hostName, safeStart });
-    return true;
-  } catch (e) {
-    console.error("createRoomInDb error:", e);
-    showInfoOverlay("ما قدرنا ننشئ الغرفة في السيرفر، جرّب بعد شوي.");
-    return false;
-  }
+  console.log("createRoomInDb stub:", { code, hostName, startTeam });
+  // دائماً نرجّع true عشان ما يوقفك عن الدخول للوبي
+  return true;
 }
 
-// التحقق إذا الكود موجود في rooms
 async function checkRoomExistsInDb(code) {
-  try {
-    const roomRef = doc(db, "rooms", code);
-    const snap    = await getDoc(roomRef);
-    return snap.exists();
-  } catch (e) {
-    console.error("checkRoomExistsInDb error:", e);
-    // لو فيه خطأ من السيرفر ما نمنع اللاعب من المحاولة
-    return true;
-  }
+  console.log("checkRoomExistsInDb stub for code:", code);
+  // نسمح دايماً بالدخول، بس بدون تزامن حقيقي
+  return true;
 }
 
-// إضافة لاعب إلى players (subcollection داخل الغرفة)
 async function addPlayerToRoom(code, name, team, role) {
-  const safeTeam = team || "none";
-  const safeRole = role || "none";
-
-  try {
-    const playersCol = collection(db, "rooms", code, "players");
-    const docRef = await addDoc(playersCol, {
-      name: name,
-      team: safeTeam,
-      role: safeRole,
-      joined_at: serverTimestamp()
-    });
-
-    console.log("Player added:", { id: docRef.id, name, safeTeam, safeRole });
-  } catch (e) {
-    console.error("addPlayerToRoom error:", e);
-    showInfoOverlay("ما قدرنا نضيفك كلاعب في الغرفة، جرّب مرة ثانية.");
-  }
+  console.log("addPlayerToRoom stub:", { code, name, team, role });
+  // ما نسوي شيء فعلياً — أوفلاين
 }
 
-// حفظ حالة الغرفة في قاعدة البيانات
 async function saveRoomStateToDb() {
-  if (!roomCode) return;
-
-  const payload = {
-    current_team: currentTeamTurn || startingTeam || "red",
-    phase: phase || "clue",
-    board_state: boardState
-  };
-
-  try {
-    const roomRef = doc(db, "rooms", roomCode);
-    await updateDoc(roomRef, payload);
-    // console.log("Room state saved.");
-  } catch (e) {
-    console.error("saveRoomStateToDb error:", e);
-  }
+  // لا شيء — ما في سيرفر نحفظ له
 }
 
-// ===== كود اللعبة =====
 
-console.log("CIPHER Loaded");
-
-// معلومات اللاعب
+// ===== معلومات اللاعب =====
 let playerName = "";
 let playerTeam = null;   // "red" / "blue"
 let playerRole = null;   // "spymaster" / "operative"
@@ -429,12 +332,13 @@ function handleTimerEnd() {
 
 // ===== شاشة البداية: هوست / انضمام =====
 window.addEventListener("DOMContentLoaded", () => {
-  testFirebaseConnection();
+  testSupabaseConnection();
 
   const nicknameInput = document.getElementById("nickname-input");
   const hostBtn       = document.getElementById("btn-host");
   const joinBtn       = document.getElementById("btn-join");
   const joinCodeInput = document.getElementById("join-code-input");
+  const enterGameBtn  = document.getElementById("btn-enter-game");
 
   // إنشاء غرفة (هوست)
   hostBtn.onclick = async () => {
@@ -463,7 +367,7 @@ window.addEventListener("DOMContentLoaded", () => {
     showSection("lobby-screen");
   };
 
-  // الانضمام إلى غرفة
+  // الانضمام إلى غرفة (أوفلاين: بس يتحقق من طول الكود)
   joinBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
@@ -477,8 +381,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const exists = await checkRoomExistsInDb(code);
     if (!exists) {
-      showInfoOverlay("❌ عذراً، لا توجد غرفة بهذا الكود.\nتأكد من الكود أو خلي صاحبك ينشئ غرفة جديدة.");
-      return;
+      showInfoOverlay("❌ أوفلاين مود: بنسمح لك تدخل حتى لو الكود غير موجود.");
+      // نكمّل الدخول على أي حال
     }
 
     isHost   = false;
@@ -491,6 +395,15 @@ window.addEventListener("DOMContentLoaded", () => {
     updateHostControlsUI();
 
     showSection("lobby-screen");
+  };
+
+  // زر "دخول اللعبة (Spectator)"
+  enterGameBtn.onclick = () => {
+    document.querySelector(".box").classList.add("corner");
+    updatePlayerInfoUI();
+    showSection("game-area");
+    updateHostControlsUI();
+    startNewRoundFlow();
   };
 });
 
@@ -592,7 +505,7 @@ function startNewRoundFlow() {
 
   setupBoard();
 
-  currentTeamTurn = startingTeam;
+  currentTeamTurn = startingTeam || "red";
   phase           = "clue";
   currentClueText = "";
   currentClueTeam = null;
