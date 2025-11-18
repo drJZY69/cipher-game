@@ -403,7 +403,7 @@ button:hover:not(:disabled) {
   opacity: 0.95;
 }
 
-/* ===== شاشة الفوز / الرسائل ===== */
+/* ===== شاشة الفوز / الرسائل / تغيير الاسم ===== */
 .overlay {
   position: fixed;
   top: 0;
@@ -419,7 +419,10 @@ button:hover:not(:disabled) {
 
 .overlay.hidden { display: none; }
 
-.overlay-box { text-align: center; }
+.overlay-box { 
+  text-align: center;
+  padding: 20px 24px;
+}
 
 .overlay-logo {
   font-size: 65px;
@@ -433,6 +436,25 @@ button:hover:not(:disabled) {
 .overlay-text {
   font-size: 28px;
   margin-bottom: 20px;
+}
+
+/* حقل تغيير الاسم داخل الـ overlay */
+.overlay-input {
+  width: 100%;
+  max-width: 340px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: none;
+  text-align: center;
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+
+/* أزرار حفظ / إلغاء داخل overlay */
+.overlay-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
 }
 
 /* ===== عدّ تنازلي بصري للثواني الأخيرة ===== */
