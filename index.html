@@ -12,7 +12,6 @@
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 
-
 <body>
 
   <!-- الهيدر -->
@@ -171,7 +170,7 @@
       </div>
     </div>
 
-    <!-- توست / أنيميشن التلميح -->
+    <!-- توست / أنيميشن التلميح و العد التنازلي -->
     <div id="clue-toast" class="clue-toast hidden"></div>
 
     <!-- أزرار التحكم -->
@@ -207,20 +206,16 @@
     </div>
   </div>
 
-  <!-- عدّ تنازلي بصري للثواني الأخيرة -->
-  <div id="countdown-overlay" class="countdown-overlay hidden">
-    <div id="countdown-number">10</div>
-  </div>
-
-  <!-- ملفات الصوت -->
-  <audio id="sfx-turn" src="sfx/turn.mp3"></audio>
-  <audio id="sfx-win" src="sfx/win.mp3"></audio>
-  <audio id="sfx-lose" src="sfx/lose.mp3"></audio>
-  <audio id="sfx-correct" src="sfx/correct.mp3"></audio>
-  <audio id="sfx-wrong" src="sfx/wrong.mp3"></audio>
-  <audio id="sfx-clue" src="sfx/clue.mp3"></audio>
-  <audio id="sfx-roundstart" src="sfx/roundstart.mp3"></audio>
-  <audio id="sfx-countdown" src="sfx/countdown.mp3"></audio>
+  <!-- 🎵 عناصر الصوتيات (أنت تحط الملفات بنفس الأسماء أو تغيّرها) -->
+  <audio id="sfx-round-start"   src="sfx/round_start.mp3"></audio>
+  <audio id="sfx-turn-change"   src="sfx/turn_change.mp3"></audio>
+  <audio id="sfx-clue"          src="sfx/clue.mp3"></audio>
+  <audio id="sfx-card-correct"  src="sfx/card_correct.mp3"></audio>
+  <audio id="sfx-card-wrong"    src="sfx/card_wrong.mp3"></audio>
+  <audio id="sfx-assassin"      src="sfx/assassin.mp3"></audio>
+  <audio id="sfx-win"           src="sfx/win.mp3"></audio>
+  <audio id="sfx-lose"          src="sfx/lose.mp3"></audio>
+  <audio id="sfx-tick"          src="sfx/tick.mp3"></audio>
 
   <script src="app.js"></script>
 </body>
