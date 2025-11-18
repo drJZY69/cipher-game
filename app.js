@@ -32,9 +32,8 @@ async function testSupabaseConnection() {
 
 // إنشاء غرفة جديدة في rooms
 async function createRoomInDb(code, hostName, startTeam) {
-  if (!supa) return true; // لو ما فيه supabase نخليها أوفلاين
+  if (!supa) return true; // أوفلاين
 
-  // نضمن قيمة افتراضية لو لأي سبب startTeam كان فاضي
   const safeStart = startTeam || "red";
 
   try {
@@ -46,7 +45,6 @@ async function createRoomInDb(code, hostName, startTeam) {
         starting_team: safeStart,
         current_team: safeStart,
         phase: "lobby",
-        // board_state عندك NOT NULL في الجدول، فنرسل مصفوفة فاضية كـ JSON
         board_state: []
       })
       .select()
@@ -80,7 +78,7 @@ async function checkRoomExistsInDb(code) {
 
     if (error) {
       console.error("checkRoomExistsInDb error:", error);
-      return true; // لو الخطأ من السيرفر ما نمنع اللاعب
+      return true;
     }
 
     return data && data.length > 0;
@@ -94,7 +92,6 @@ async function checkRoomExistsInDb(code) {
 async function addPlayerToRoom(code, name, team, role) {
   if (!supa) return;
 
-  // لازم نرسل قيم مو null عشان أعمدة team و role عندك NOT NULL
   const safeTeam = team || "none";
   const safeRole = role || "none";
 
@@ -119,6 +116,30 @@ async function addPlayerToRoom(code, name, team, role) {
     console.log("Player added:", data);
   } catch (e) {
     console.error("addPlayerToRoom fatal:", e);
+  }
+}
+
+// حفظ حالة الغرفة في قاعدة البيانات (بدون clue_team نهائياً)
+async function saveRoomStateToDb() {
+  if (!supa || !roomCode) return;
+
+  const payload = {
+    current_team: currentTeamTurn || startingTeam || "red",
+    phase: phase || "clue",
+    board_state: boardState
+  };
+
+  try {
+    const { error } = await supa
+      .from("rooms")
+      .update(payload)
+      .eq("code", roomCode);
+
+    if (error) {
+      console.error("saveRoomStateToDb error:", error);
+    }
+  } catch (e) {
+    console.error("saveRoomStateToDb fatal:", e);
   }
 }
 
@@ -400,12 +421,14 @@ function handleTimerEnd() {
 
       updateTurnUI();
       updateClueUI();
+      saveRoomStateToDb();
       startPhaseTimer("clue");
     } else {
       phase = "guess";
       clearAllSusMarkers();
       updateTurnUI();
       updateClueUI();
+      saveRoomStateToDb();
       startPhaseTimer("guess");
     }
   } else if (phase === "guess") {
@@ -421,6 +444,7 @@ function handleTimerEnd() {
 
     updateTurnUI();
     updateClueUI();
+    saveRoomStateToDb();
     startPhaseTimer("clue");
   }
 }
@@ -452,7 +476,6 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // نضيف الهوست كلاعب بتيم/رول none
     await addPlayerToRoom(roomCode, playerName, "none", "none");
 
     document.getElementById("player-name-label").textContent = playerName;
@@ -483,7 +506,6 @@ window.addEventListener("DOMContentLoaded", () => {
     isHost   = false;
     roomCode = code;
 
-    // نضيف اللاعب الجديد players
     await addPlayerToRoom(roomCode, playerName, "none", "none");
 
     document.getElementById("player-name-label").textContent = playerName;
@@ -602,6 +624,7 @@ function startNewRoundFlow() {
 
   updateTurnUI();
   updateClueUI();
+  saveRoomStateToDb();
   startPhaseTimer("clue");
 }
 
@@ -760,6 +783,7 @@ function sendClue() {
   phase = "guess";
   clearAllSusMarkers();
   updateTurnUI();
+  saveRoomStateToDb();
   startPhaseTimer("guess");
 }
 
@@ -802,6 +826,8 @@ function revealCard(i) {
     playSfx("sfx-assassin");
     showResult("assassin");
   }
+
+  saveRoomStateToDb();
 }
 
 // فحص الفوز
