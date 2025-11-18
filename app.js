@@ -450,12 +450,12 @@ window.addEventListener("DOMContentLoaded", () => {
   if (endRoundBtn)      endRoundBtn.onclick      = () => endRoundAndReturn();
   if (resultToLobbyBtn) resultToLobbyBtn.onclick = () => returnToLobbyFromResult();
 
-  // 🔥 لاقط عام لكل الأزرار حسب النص اللي عليها
+  // 🔥 لاقط عام لكل الكلكات (أي عنصر، مو بس button)
   document.addEventListener("click", (event) => {
-    const btn = event.target.closest("button");
-    if (!btn) return;
+    const el = event.target;
+    if (!el) return;
 
-    const txt = btn.textContent.trim();
+    const txt = el.textContent.trim();
 
     // زر "حسناً" في كل الرسائل
     if (txt === "حسناً" || txt === "حسنا") {
@@ -489,7 +489,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!role) return;
 
       // نحدد الفريق من النص الموجود في الكرت الأب
-      let node = btn.parentElement;
+      let node = el.parentElement;
       let team = null;
       while (node && node !== document.body) {
         const t = node.textContent;
