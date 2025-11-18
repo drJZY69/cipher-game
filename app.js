@@ -27,6 +27,91 @@ async function testSupabaseConnection() {
   }
 }
 
+// ===== دوال Supabase (غرف + لاعبين) =====
+
+// إنشاء غرفة جديدة
+async function createRoomInDb(code, hostName, startingTeam) {
+  if (!supa) return null;
+
+  try {
+    const { data, error } = await supa
+      .from("rooms")
+      .insert({
+        code: code,
+        host_name: hostName,
+        starting_team: startingTeam,
+        current_team: startingTeam,
+        phase: "lobby"
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("createRoomInDb error:", error);
+      showInfoOverlay("ما قدرنا ننشئ الغرفة في السيرفر، جرّب بعد شوي.");
+      return null;
+    }
+
+    console.log("Room created in DB:", data);
+    return data;
+  } catch (e) {
+    console.error("createRoomInDb fatal:", e);
+    showInfoOverlay("صار خطأ غير متوقع أثناء إنشاء الغرفة.");
+    return null;
+  }
+}
+
+// جلب غرفة برمزها
+async function fetchRoomByCode(code) {
+  if (!supa) return null;
+
+  try {
+    const { data, error } = await supa
+      .from("rooms")
+      .select("*")
+      .eq("code", code)
+      .maybeSingle();
+
+    if (error) {
+      console.error("fetchRoomByCode error:", error);
+      return null;
+    }
+
+    return data; // لو ما فيه غرفة يرجع null
+  } catch (e) {
+    console.error("fetchRoomByCode fatal:", e);
+    return null;
+  }
+}
+
+// إضافة لاعب لجدول players
+async function addPlayerToRoom(code, name, team = null, role = null) {
+  if (!supa) return;
+
+  try {
+    const { data, error } = await supa
+      .from("players")
+      .insert({
+        room_code: code,
+        name: name,
+        team: team,
+        role: role
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("addPlayerToRoom error:", error);
+      showInfoOverlay("ما قدرنا نضيفك كلاعب في الغرفة، جرّب مرة ثانية.");
+      return;
+    }
+
+    console.log("Player added:", data);
+  } catch (e) {
+    console.error("addPlayerToRoom fatal:", e);
+  }
+}
+
 // ===== كود اللعبة =====
 
 console.log("CIPHER Loaded");
@@ -347,13 +432,28 @@ window.addEventListener("DOMContentLoaded", () => {
   const joinBtn = document.getElementById("btn-join");
   const joinCodeInput = document.getElementById("join-code-input");
 
-  hostBtn.onclick = () => {
+  // إنشاء غرفة (هوست)
+  hostBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
     playerName = name;
 
     isHost = true;
     roomCode = generateRoomCode();
+
+    // نحدد الفريق الذي يبدأ (يتوافق مع منطق البورد)
+    startingTeam = Math.random() < 0.5 ? "red" : "blue";
+
+    // إنشاء الغرفة في Supabase
+    const room = await createRoomInDb(roomCode, playerName, startingTeam);
+    if (!room) {
+      isHost = false;
+      roomCode = "";
+      return;
+    }
+
+    // إضافة الهوست لجدول اللاعبين
+    await addPlayerToRoom(roomCode, playerName, null, null);
 
     document.getElementById("player-name-label").textContent = playerName;
     updateRoomInfoUI();
@@ -362,7 +462,8 @@ window.addEventListener("DOMContentLoaded", () => {
     showSection("lobby-screen");
   };
 
-  joinBtn.onclick = () => {
+  // الانضمام إلى غرفة موجودة
+  joinBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
     playerName = name;
@@ -373,8 +474,18 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // نتأكد أن الغرفة موجودة
+    const room = await fetchRoomByCode(code);
+    if (!room) {
+      showInfoOverlay("ما وجدنا غرفة بهذا الرمز، تأكد أن الهوست أعطاك الكود الصحيح.");
+      return;
+    }
+
     isHost = false;
     roomCode = code;
+
+    // إضافة اللاعب لجدول اللاعبين
+    await addPlayerToRoom(roomCode, playerName, null, null);
 
     document.getElementById("player-name-label").textContent = playerName;
     updateRoomInfoUI();
@@ -752,4 +863,3 @@ function returnToLobbyFromResult() {
 
   updateHostControlsUI();
 }
-
