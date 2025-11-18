@@ -28,53 +28,88 @@ async function testSupabaseConnection() {
   }
 }
 
-// ===== دوال Supabase للغرف =====
+// ===== دوال Supabase =====
 
-// إنشاء غرفة جديدة
-async function createRoomInDb(code, hostName) {
-  if (!supa) return true; // لو ما فيه supabase نخلي اللعبة أوفلاين
-
-  try {
-    const { error } = await supa
-      .from("rooms")
-      .insert({ code: code, host_name: hostName });
-
-    if (error) {
-      console.error("createRoomInDb error:", error);
-      showInfoOverlay("ما قدرنا ننشئ الغرفة في السيرفر، جرّب بعد شوي.");
-      return false;
-    }
-
-    console.log("Room created in DB:", code);
-    return true;
-  } catch (e) {
-    console.error("createRoomInDb fatal:", e);
-    showInfoOverlay("صار خطأ غير متوقع أثناء إنشاء الغرفة.");
-    return false;
-  }
-}
-
-// التحقق إذا الكود موجود
-async function checkRoomExistsInDb(code) {
-  if (!supa) return true; // نخليها أوفلاين لو مافيه سيرفر
+// إنشاء غرفة جديدة في rooms
+async function createRoomInDb(code, hostName, startingTeam) {
+  if (!supa) return null;
 
   try {
     const { data, error } = await supa
       .from("rooms")
-      .select("id")
-      .eq("code", code)
-      .limit(1);
+      .insert({
+        code: code,
+        host_name: hostName,
+        starting_team: startingTeam,
+        current_team: startingTeam,
+        phase: "lobby"
+      })
+      .select()
+      .single();
 
     if (error) {
-      console.error("checkRoomExistsInDb error:", error);
-      // ما نمنع اللاعب لو المشكلة من السيرفر
-      return true;
+      console.error("createRoomInDb error:", error);
+      showInfoOverlay("ما قدرنا ننشئ الغرفة في السيرفر، جرّب بعد شوي.");
+      return null;
     }
 
-    return data && data.length > 0;
+    console.log("Room created in DB:", data);
+    return data;
   } catch (e) {
-    console.error("checkRoomExistsInDb fatal:", e);
-    return true;
+    console.error("createRoomInDb fatal:", e);
+    showInfoOverlay("صار خطأ غير متوقع أثناء إنشاء الغرفة.");
+    return null;
+  }
+}
+
+// جلب غرفة برمزها
+async function fetchRoomByCode(code) {
+  if (!supa) return null;
+
+  try {
+    const { data, error } = await supa
+      .from("rooms")
+      .select("*")
+      .eq("code", code)
+      .maybeSingle();
+
+    if (error) {
+      console.error("fetchRoomByCode error:", error);
+      return null;
+    }
+
+    return data; // لو ما فيه غرفة يرجع null
+  } catch (e) {
+    console.error("fetchRoomByCode fatal:", e);
+    return null;
+  }
+}
+
+// إضافة لاعب لجدول players
+async function addPlayerToRoom(code, name, team = null, role = null) {
+  if (!supa) return;
+
+  try {
+    const { data, error } = await supa
+      .from("players")
+      .insert({
+        room_code: code,
+        name: name,
+        team: team,
+        role: role
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("addPlayerToRoom error:", error);
+      showInfoOverlay("ما قدرنا نضيفك كلاعب في الغرفة، جرّب مرة ثانية.");
+      return;
+    }
+
+    console.log("Player added:", data);
+  } catch (e) {
+    console.error("addPlayerToRoom fatal:", e);
   }
 }
 
@@ -149,7 +184,7 @@ function stopTimer() {
   }
 }
 
-// صوتيات (حالياً بدون ملفات، بس نحافظ على الدالة)
+// 🎵 صوتيات
 function playSfx(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -401,12 +436,15 @@ window.addEventListener("DOMContentLoaded", () => {
 
     startingTeam = Math.random() < 0.5 ? "red" : "blue";
 
-    const ok = await createRoomInDb(roomCode, playerName);
-    if (!ok) {
+    const room = await createRoomInDb(roomCode, playerName, startingTeam);
+    if (!room) {
       isHost   = false;
       roomCode = "";
       return;
     }
+
+    // نسجل الهوست في جدول اللاعبين
+    await addPlayerToRoom(roomCode, playerName, null, null);
 
     document.getElementById("player-name-label").textContent = playerName;
     updateRoomInfoUI();
@@ -427,14 +465,17 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const exists = await checkRoomExistsInDb(code);
-    if (!exists) {
+    const room = await fetchRoomByCode(code);
+    if (!room) {
       showInfoOverlay("❌ عذراً، لا توجد غرفة بهذا الكود.\nتأكد من الكود أو خلي صاحبك ينشئ غرفة جديدة.");
       return;
     }
 
     isHost   = false;
     roomCode = code;
+
+    // نضيف اللاعب في جدول players
+    await addPlayerToRoom(roomCode, playerName, null, null);
 
     document.getElementById("player-name-label").textContent = playerName;
     updateRoomInfoUI();
