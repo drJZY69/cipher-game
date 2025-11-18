@@ -6,9 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="style.css">
-
-  <!-- مكتبة Supabase -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -214,7 +211,8 @@
   <audio id="sfx-win"           src="sfx/win.mp3"></audio>
   <audio id="sfx-lose"          src="sfx/lose.mp3"></audio>
 
-  <script src="app.js"></script>
+  <!-- سكربت اللعبة (ES Module مع Firebase داخل app.js) -->
+  <script type="module" src="app.js"></script>
 
 </body>
 </html>
