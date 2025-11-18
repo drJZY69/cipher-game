@@ -1,5 +1,5 @@
 // ===== تهيئة Supabase =====
-const SUPABASE_URL = "https://yifgimztfhbyocdwrqjr.supabase.co"; // ثابتة لمشروعك
+const SUPABASE_URL = "https://yifgimzftfhybocdwrkqj.supabase.co"; // ثابتة لمشروعك (مصححة)
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZmdpbXp0ZmhieW9jZHdycWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MjAxNzYsImV4cCI6MjA3ODk5NjE3Nn0.g2809m0EjwpfHn9UzM4iPVhU6NAFAgB1HNs6D9ur4TQ";
 
 let supa = null;
