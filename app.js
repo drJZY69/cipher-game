@@ -84,36 +84,15 @@ async function checkRoomExistsInDb(code) {
   }
 }
 
-// إضافة لاعب إلى players
+// ✅ إضافة لاعب إلى players (معطلة – فقط لوج محلي عشان نوقف أخطاء الـ NOT NULL)
 async function addPlayerToRoom(code, name, team, role) {
-  if (!supa) return;
-
-  // هنا نضمن 100% ما نرسل null أبداً
-  const safeTeam = team || "none";
-  const safeRole = role || "none";
-
-  try {
-    const { data, error } = await supa
-      .from("players")
-      .insert({
-        room_code: code,
-        name: name,
-        team: safeTeam,
-        role: safeRole
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("addPlayerToRoom error:", error);
-      showInfoOverlay("ما قدرنا نضيفك كلاعب في الغرفة، جرّب مرة ثانية.");
-      return;
-    }
-
-    console.log("Player added:", data);
-  } catch (e) {
-    console.error("addPlayerToRoom fatal:", e);
-  }
+  console.log("addPlayerToRoom skipped (local only):", {
+    room_code: code,
+    name,
+    team,
+    role
+  });
+  return;
 }
 
 // ===== كود اللعبة =====
@@ -446,7 +425,7 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // نضيف الهوست كلاعب بتيم/رول none
+    // نضيف الهوست كلاعب (محلي فقط – لا شيء على السيرفر)
     await addPlayerToRoom(roomCode, playerName, "none", "none");
 
     document.getElementById("player-name-label").textContent = playerName;
@@ -477,7 +456,7 @@ window.addEventListener("DOMContentLoaded", () => {
     isHost   = false;
     roomCode = code;
 
-    // نضيف اللاعب الجديد players
+    // نضيف اللاعب الجديد (محلي فقط)
     await addPlayerToRoom(roomCode, playerName, "none", "none");
 
     document.getElementById("player-name-label").textContent = playerName;
