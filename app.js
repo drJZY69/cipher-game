@@ -36,20 +36,15 @@ async function testSupabaseConnection() {
 
 // إنشاء غرفة جديدة في rooms
 async function createRoomInDb(code, hostName) {
-  if (!supa) return true; // لو مافيه supabase نخليها أوفلاين
+  if (!supa) return true; // لو ما فيه supabase نخليها أوفلاين
 
   try {
     const { data, error } = await supa
       .from("rooms")
       .insert({
         code: code,
-        host_name: hostName,
-        starting_team: null,
-        current_team: null,
-        phase: "lobby",
-        board_state: null,
-        clue_text: null,
-        clue_team: null
+        host_name: hostName
+        // لا تضيف أي أعمدة ثانية هنا الآن
       })
       .select()
       .single();
@@ -1070,3 +1065,4 @@ function returnToLobbyFromResult() {
 
   updateHostControlsUI();
 }
+
