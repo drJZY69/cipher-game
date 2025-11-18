@@ -10,7 +10,7 @@ if (typeof supabase !== "undefined") {
   console.error("Supabase library not loaded! تأكد من وسم السكربت في index.html");
 }
 
-// فحص اتصال سريع فقط
+// فحص اتصال سريع
 async function testSupabaseConnection() {
   if (!supa) {
     console.error("Supabase client is null – ما تم إنشاؤه.");
@@ -28,27 +28,20 @@ async function testSupabaseConnection() {
   }
 }
 
-// ===== دوال Supabase =====
+// ===== دوال Supabase للغرف واللاعبين =====
 
 // إنشاء غرفة جديدة في rooms
-async function createRoomInDb(code, hostName, startingTeam) {
-  if (!supa) return null;
+async function createRoomInDb(code, hostName) {
+  if (!supa) return true; // لو ما فيه supabase نخليها أوفلاين
 
   try {
     const { data, error } = await supa
       .from("rooms")
       .insert({
         code: code,
-        host_name: hostName,
-        starting_team: startingTeam,
-        current_team: startingTeam,
-        phase: "lobby",
-        // نحط حالة بورد فاضية عشان ما يكون العمود null
-        board_state: {
-          cards: [],
-          remainingRed: 0,
-          remainingBlue: 0
-        }
+        host_name: hostName
+        // لو عندك أعمدة ثانية (starting_team, current_team, board_state ...)
+        // تقدر تضيفها هنا
       })
       .select()
       .single();
@@ -56,44 +49,48 @@ async function createRoomInDb(code, hostName, startingTeam) {
     if (error) {
       console.error("createRoomInDb error:", error);
       showInfoOverlay("ما قدرنا ننشئ الغرفة في السيرفر، جرّب بعد شوي.");
-      return null;
+      return false;
     }
 
     console.log("Room created in DB:", data);
-    return data;
+    return true;
   } catch (e) {
     console.error("createRoomInDb fatal:", e);
     showInfoOverlay("صار خطأ غير متوقع أثناء إنشاء الغرفة.");
-    return null;
+    return false;
   }
 }
 
-// جلب غرفة برمزها
-async function fetchRoomByCode(code) {
-  if (!supa) return null;
+// التحقق إذا الكود موجود في rooms
+async function checkRoomExistsInDb(code) {
+  if (!supa) return true;
 
   try {
     const { data, error } = await supa
       .from("rooms")
-      .select("*")
+      .select("id")
       .eq("code", code)
-      .maybeSingle();
+      .limit(1);
 
     if (error) {
-      console.error("fetchRoomByCode error:", error);
-      return null;
+      console.error("checkRoomExistsInDb error:", error);
+      return true; // لو الخطأ من السيرفر ما نمنع اللاعب
     }
 
-    return data; // لو ما فيه غرفة يرجع null
+    return data && data.length > 0;
   } catch (e) {
-    console.error("fetchRoomByCode fatal:", e);
-    return null;
+    console.error("checkRoomExistsInDb fatal:", e);
+    return true;
   }
 }
 
-// إضافة لاعب لجدول players
-async function addPlayerToRoom(code, name, team = "none", role = "none") {
+// إضافة لاعب إلى players
+async function addPlayerToRoom(code, name, team, role) {
   if (!supa) return;
+
+  // هنا نضمن 100% ما نرسل null أبداً
+  const safeTeam = team || "none";
+  const safeRole = role || "none";
 
   try {
     const { data, error } = await supa
@@ -101,8 +98,8 @@ async function addPlayerToRoom(code, name, team = "none", role = "none") {
       .insert({
         room_code: code,
         name: name,
-        team: team,   // ما عاد ترسل null أبداً
-        role: role    // نفس الشي
+        team: safeTeam,
+        role: safeRole
       })
       .select()
       .single();
@@ -118,7 +115,6 @@ async function addPlayerToRoom(code, name, team = "none", role = "none") {
     console.error("addPlayerToRoom fatal:", e);
   }
 }
-
 
 // ===== كود اللعبة =====
 
@@ -139,13 +135,13 @@ let remainingRed = 0;
 let remainingBlue = 0;
 
 // نظام الدور والمرحلة
-let startingTeam = null;         // الفريق الذي يبدأ (الذي يملك 9 كروت)
-let currentTeamTurn = null;      // "red" أو "blue"
-let phase = "clue";              // "clue" أو "guess"
+let startingTeam = null;
+let currentTeamTurn = null;      // "red" / "blue"
+let phase = "clue";              // "clue" / "guess"
 
 // التلميح
 let currentClueText = "";
-let currentClueTeam = null;      // "red" أو "blue"
+let currentClueTeam = null;      // "red" / "blue"
 
 // التايمر
 let masterTimeLimit = 60;
@@ -191,7 +187,7 @@ function stopTimer() {
   }
 }
 
-// 🎵 صوتيات
+// تشغيل الصوتيات
 function playSfx(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -201,7 +197,7 @@ function playSfx(id) {
   } catch (_) {}
 }
 
-// توليد كود غرفة من 5 حروف
+// توليد كود غرفة
 function generateRoomCode() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let code = "";
@@ -226,12 +222,12 @@ function updateRoomInfoUI() {
   roleSpan.textContent = isHost ? "هوست" : "لاعب";
 }
 
-// تحكم الهوست في الأزرار + الوقت
+// تحكم الهوست
 function updateHostControlsUI() {
-  const startBtn   = document.getElementById("start-game-btn");
-  const newRoundBtn= document.getElementById("new-round-btn");
-  const masterInput= document.getElementById("master-time-input");
-  const opsInput   = document.getElementById("ops-time-input");
+  const startBtn    = document.getElementById("start-game-btn");
+  const newRoundBtn = document.getElementById("new-round-btn");
+  const masterInput = document.getElementById("master-time-input");
+  const opsInput    = document.getElementById("ops-time-input");
 
   if (startBtn) {
     if (isHost) startBtn.classList.remove("hidden");
@@ -267,13 +263,13 @@ function updateTurnUI() {
   const teamSpan  = document.getElementById("turn-team-label");
   const phaseSpan = document.getElementById("turn-phase-label");
 
-  if (currentTeamTurn === "red")  teamSpan.textContent = "الفريق الأحمر";
-  else if (currentTeamTurn === "blue") teamSpan.textContent = "الفريق الأزرق";
-  else teamSpan.textContent = "-";
+  if (currentTeamTurn === "red")      teamSpan.textContent = "الفريق الأحمر";
+  else if (currentTeamTurn === "blue")teamSpan.textContent = "الفريق الأزرق";
+  else                                teamSpan.textContent = "-";
 
-  if (phase === "clue")  phaseSpan.textContent = "إرسال تلميح";
+  if (phase === "clue")       phaseSpan.textContent = "إرسال تلميح";
   else if (phase === "guess") phaseSpan.textContent = "اختيار البطاقات";
-  else phaseSpan.textContent = "-";
+  else                        phaseSpan.textContent = "-";
 }
 
 // واجهة التلميح
@@ -292,9 +288,9 @@ function updateClueUI() {
 
   clueTextSpan.textContent = currentClueText || "لا يوجد تلميح بعد";
 
-  if (currentClueTeam === "red")  clueTeamSpan.textContent = "الفريق الأحمر";
-  else if (currentClueTeam === "blue") clueTeamSpan.textContent = "الفريق الأزرق";
-  else clueTeamSpan.textContent = "-";
+  if (currentClueTeam === "red")      clueTeamSpan.textContent = "الفريق الأحمر";
+  else if (currentClueTeam === "blue")clueTeamSpan.textContent = "الفريق الأزرق";
+  else                                clueTeamSpan.textContent = "-";
 }
 
 // توست
@@ -352,7 +348,7 @@ function canInteractWithCards(showMessage) {
   return true;
 }
 
-// تايمر
+// التايمر
 function startPhaseTimer(phaseType) {
   stopTimer();
 
@@ -432,7 +428,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const joinBtn       = document.getElementById("btn-join");
   const joinCodeInput = document.getElementById("join-code-input");
 
-  // إنشاء غرفة
+  // إنشاء غرفة (هوست)
   hostBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
@@ -443,15 +439,15 @@ window.addEventListener("DOMContentLoaded", () => {
 
     startingTeam = Math.random() < 0.5 ? "red" : "blue";
 
-    const room = await createRoomInDb(roomCode, playerName, startingTeam);
-    if (!room) {
+    const ok = await createRoomInDb(roomCode, playerName);
+    if (!ok) {
       isHost   = false;
       roomCode = "";
       return;
     }
 
-    // نسجل الهوست في جدول اللاعبين
-    await addPlayerToRoom(roomCode, playerName, null, null);
+    // نضيف الهوست كلاعب بتيم/رول none
+    await addPlayerToRoom(roomCode, playerName, "none", "none");
 
     document.getElementById("player-name-label").textContent = playerName;
     updateRoomInfoUI();
@@ -460,7 +456,7 @@ window.addEventListener("DOMContentLoaded", () => {
     showSection("lobby-screen");
   };
 
-  // انضمام لغرفة
+  // الانضمام إلى غرفة
   joinBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
@@ -472,8 +468,8 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const room = await fetchRoomByCode(code);
-    if (!room) {
+    const exists = await checkRoomExistsInDb(code);
+    if (!exists) {
       showInfoOverlay("❌ عذراً، لا توجد غرفة بهذا الكود.\nتأكد من الكود أو خلي صاحبك ينشئ غرفة جديدة.");
       return;
     }
@@ -481,8 +477,8 @@ window.addEventListener("DOMContentLoaded", () => {
     isHost   = false;
     roomCode = code;
 
-    // نضيف اللاعب في جدول players
-    await addPlayerToRoom(roomCode, playerName, null, null);
+    // نضيف اللاعب الجديد players
+    await addPlayerToRoom(roomCode, playerName, "none", "none");
 
     document.getElementById("player-name-label").textContent = playerName;
     updateRoomInfoUI();
@@ -591,7 +587,7 @@ function startNewRoundFlow() {
   setupBoard();
 
   currentTeamTurn = startingTeam;
-  phase          = "clue";
+  phase           = "clue";
   currentClueText = "";
   currentClueTeam = null;
 
@@ -603,7 +599,7 @@ function startNewRoundFlow() {
   startPhaseTimer("clue");
 }
 
-// إنهاء الجولة والرجوع للوبي
+// إنهاء الجولة
 function endRoundAndReturn() {
   if (!isHost) {
     showInfoOverlay("فقط الهوست يقدر إنهاء الجولة والرجوع إلى اللوبي.");
@@ -653,7 +649,7 @@ function setupBoard() {
   const board = document.getElementById("board");
   board.innerHTML = "";
 
-  const words        = pick25Words();
+  const words = pick25Words();
   const { layout, firstTeam } = generateTeamLayout();
   startingTeam = firstTeam;
 
@@ -846,5 +842,3 @@ function returnToLobbyFromResult() {
 
   updateHostControlsUI();
 }
-
-
