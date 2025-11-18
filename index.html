@@ -123,6 +123,11 @@
     <button id="start-game-btn" onclick="startGame()" disabled>
       بدء اللعبة
     </button>
+
+    <!-- زر دخول اللعبة (Spectator / لاعب عادي) -->
+    <button id="btn-enter-game">
+      🎮 دخول للعبة (Spectator)
+    </button>
   </div>
 
   <!-- شاشة اللعبة -->
@@ -199,7 +204,7 @@
     </div>
   </div>
 
-  <!-- 🎵 عناصر الصوتيات (معدّلة لتطابق أسماء الملفات في مجلد sfx) -->
+  <!-- 🎵 عناصر الصوتيات -->
   <audio id="sfx-round-start"   src="sfx/start.mp3"></audio>
   <audio id="sfx-turn-change"   src="sfx/turn.mp3"></audio>
   <audio id="sfx-clue"          src="sfx/clue.mp3"></audio>
@@ -208,8 +213,8 @@
   <audio id="sfx-assassin"      src="sfx/lose.mp3"></audio>
   <audio id="sfx-win"           src="sfx/win.mp3"></audio>
   <audio id="sfx-lose"          src="sfx/lose.mp3"></audio>
-  
-<script src="app.js"></script>
-  
+
+  <script src="app.js"></script>
+
 </body>
 </html>
