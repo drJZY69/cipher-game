@@ -1,6 +1,9 @@
 // ===== وضع أوفلاين بدون سيرفر (لا Supabase ولا Firebase) =====
 console.log("CIPHER Loaded (OFFLINE MODE)");
 
+// نخزن كل الغرف اللي تم إنشاؤها في هذه الجلسة
+const createdRooms = new Set();
+
 // دوال سيرفر وهمية عشان ما توقف اللعبة
 async function testSupabaseConnection() {
   console.log("Backend disabled: اللعبة تعمل أوفلاين فقط.");
@@ -8,14 +11,15 @@ async function testSupabaseConnection() {
 
 async function createRoomInDb(code, hostName, startTeam) {
   console.log("createRoomInDb stub:", { code, hostName, startTeam });
-  // دائماً نرجّع true عشان ما يوقفك عن الدخول للوبي
+  // نسجل الكود كغرفة موجودة
+  createdRooms.add(code);
   return true;
 }
 
 async function checkRoomExistsInDb(code) {
   console.log("checkRoomExistsInDb stub for code:", code);
-  // نسمح دايماً بالدخول، بس بدون تزامن حقيقي
-  return true;
+  // نسمح بالدخول فقط إذا الغرفة منشأة فعلاً في هذه الجلسة
+  return createdRooms.has(code);
 }
 
 async function addPlayerToRoom(code, name, team, role) {
@@ -367,7 +371,7 @@ window.addEventListener("DOMContentLoaded", () => {
     showSection("lobby-screen");
   };
 
-  // الانضمام إلى غرفة (أوفلاين: بس يتحقق من طول الكود)
+  // الانضمام إلى غرفة
   joinBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
@@ -381,8 +385,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const exists = await checkRoomExistsInDb(code);
     if (!exists) {
-      showInfoOverlay("❌ أوفلاين مود: بنسمح لك تدخل حتى لو الكود غير موجود.");
-      // نكمّل الدخول على أي حال
+      showInfoOverlay("هذه الغرفة غير موجودة. تأكد من الكود.");
+      return;
     }
 
     isHost   = false;
@@ -405,6 +409,42 @@ window.addEventListener("DOMContentLoaded", () => {
     updateHostControlsUI();
     startNewRoundFlow();
   };
+
+  // ===== ربط أزرار الواجهة الأخرى هنا عشان نضمن شغلها =====
+
+  // زر موافق في رسالة المعلومات
+  const infoOkBtn = document.getElementById("info-ok-btn");
+  if (infoOkBtn) {
+    infoOkBtn.onclick = () => {
+      closeInfoOverlay();
+    };
+  }
+
+  // أزرار اختيار الأدوار في اللوبي
+  const redSpyBtn   = document.getElementById("btn-red-spymaster");
+  const redOpsBtn   = document.getElementById("btn-red-operative");
+  const blueSpyBtn  = document.getElementById("btn-blue-spymaster");
+  const blueOpsBtn  = document.getElementById("btn-blue-operative");
+  const leaveRoleBtn = document.getElementById("btn-leave-role");
+
+  if (redSpyBtn)  redSpyBtn.onclick  = () => chooseRole("red",  "spymaster");
+  if (redOpsBtn)  redOpsBtn.onclick  = () => chooseRole("red",  "operative");
+  if (blueSpyBtn) blueSpyBtn.onclick = () => chooseRole("blue", "spymaster");
+  if (blueOpsBtn) blueOpsBtn.onclick = () => chooseRole("blue", "operative");
+  if (leaveRoleBtn) leaveRoleBtn.onclick = () => leaveRole();
+
+  // أزرار التحكم في الجولة
+  const startGameBtn = document.getElementById("start-game-btn");
+  if (startGameBtn) startGameBtn.onclick = () => startGame();
+
+  const newRoundBtn = document.getElementById("new-round-btn");
+  if (newRoundBtn) newRoundBtn.onclick = () => startNewRoundFlow();
+
+  const endRoundBtn = document.getElementById("end-round-btn");
+  if (endRoundBtn) endRoundBtn.onclick = () => endRoundAndReturn();
+
+  const resultToLobbyBtn = document.getElementById("result-to-lobby-btn");
+  if (resultToLobbyBtn) resultToLobbyBtn.onclick = () => returnToLobbyFromResult();
 });
 
 // ===== تغيير الدور في اللوبي =====
