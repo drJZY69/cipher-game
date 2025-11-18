@@ -415,7 +415,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
       const exists = await checkRoomExistsInDb(code);
       if (!exists) {
-        showInfoOverlay("هذه الغرفة غير موجودة. تأكد من الكود.");
+        showInfoOverlay("هذه الغرفة غير موجودة. هذا طبيعي الآن لأن اللعبة تعمل أوفلاين على جهاز واحد فقط.");
         return;
       }
 
@@ -481,11 +481,13 @@ window.addEventListener("DOMContentLoaded", () => {
   if (resultToLobbyBtn) resultToLobbyBtn.onclick = () => returnToLobbyFromResult();
 
   // أزرار أعلى الشاشة داخل الجولة
-  const changeTeamBtn = document.getElementById("btn-change-team");
-  const changeNameBtn = document.getElementById("btn-change-name");
+  const changeTeamBtn   = document.getElementById("btn-change-team");
+  const changeNameBtn   = document.getElementById("btn-change-name");
+  const toSpectatorBtn  = document.getElementById("btn-to-spectator");
 
-  if (changeTeamBtn) changeTeamBtn.onclick = () => changeTeamInGame();
-  if (changeNameBtn) changeNameBtn.onclick = () => changeNameInGame();
+  if (changeTeamBtn)  changeTeamBtn.onclick  = () => changeTeamInGame();
+  if (changeNameBtn)  changeNameBtn.onclick  = () => changeNameInGame();
+  if (toSpectatorBtn) toSpectatorBtn.onclick = () => becomeSpectatorInGame();
 
   // لاقط عام لبعض النصوص لو كانت أزرار مو حقيقية
   document.addEventListener("click", (event) => {
@@ -580,93 +582,105 @@ function chooseRole(team, role) {
   updatePlayerInfoUI();
 }
 
-// ===== تغيير الفريق أثناء الجولة (Seekers فقط) =====
+// ===== تغيير الفريق أثناء الجولة (Spectator + Seekers فقط) =====
 function changeTeamInGame() {
+  // غير مسموح للـ Clue يغيّر فريقه مباشرة
+  if (playerRole && playerRole !== "operative") {
+    showInfoOverlay("تغيير الفريق أثناء الجولة متاح فقط لـ Spectator و Seekers Cipher.\nيمكنك التحويل إلى Spectator أولاً ثم اختيار فريق جديد.");
+    return;
+  }
+
+  // Spectator: يختار الدور + الفريق
   if (!playerRole) {
-    // Spectator: يقدر يختار دور/فريق
     const choice = prompt(
-      "اختر دورك:\n1 - Clue أحمر\n2 - Clue أزرق\n3 - Seekers أحمر\n4 - Seekers أزرق"
+      "اختر الدور والفريق:\n" +
+      "1 - Clue Cipher (الفريق الأحمر)\n" +
+      "2 - Clue Cipher (الفريق الأزرق)\n" +
+      "3 - Seekers Cipher (الفريق الأحمر)\n" +
+      "4 - Seekers Cipher (الفريق الأزرق)\n\n" +
+      "اكتب رقم من 1 إلى 4:"
     );
     if (!choice) return;
 
-    if (choice === "1") chooseRole("red", "spymaster");
+    if (choice === "1")      chooseRole("red",  "spymaster");
     else if (choice === "2") chooseRole("blue", "spymaster");
-    else if (choice === "3") chooseRole("red", "operative");
+    else if (choice === "3") chooseRole("red",  "operative");
     else if (choice === "4") chooseRole("blue", "operative");
-    else showInfoOverlay("اختيار غير صحيح.");
-    return;
-  }
-
-  if (playerRole !== "operative") {
-    showInfoOverlay("تبديل الفريق أثناء الجولة متاح فقط لـ Seekers Cipher.");
-    return;
-  }
-
-  const newTeam = playerTeam === "red" ? "blue" : "red";
-  chooseRole(newTeam, "operative");
-  updatePlayerInfoUI();
-}
-
-// ===== تغيير الاسم أثناء الجولة (Overlay بشكل CIPHER) =====
-function changeNameInGame() {
-  let overlay = document.getElementById("rename-overlay");
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "rename-overlay";
-    overlay.className = "overlay hidden";
-    overlay.innerHTML = `
-      <div class="overlay-box">
-        <div class="overlay-logo">CIPHER</div>
-        <div class="overlay-text">اكتب الاسم الجديد:</div>
-        <input id="rename-input" class="overlay-input" type="text" />
-        <div class="overlay-actions">
-          <button id="rename-save-btn">حفظ</button>
-          <button id="rename-cancel-btn">إلغاء</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-  }
-
-  overlay.classList.remove("hidden");
-
-  const input = document.getElementById("rename-input");
-  input.value = playerName || "لاعب مجهول";
-  input.focus();
-  input.select();
-
-  const applyName = () => {
-    let newName = input.value.trim();
-    if (!newName) newName = "لاعب مجهول";
-    playerName = newName;
-
-    const labelLobby = document.getElementById("player-name-label");
-    const labelGame  = document.getElementById("player-name-info");
-    if (labelLobby) labelLobby.textContent = playerName;
-    if (labelGame)  labelGame.textContent  = playerName;
-
-    // تحديث الاسم في اللوبي حسب الدور
-    if (playerRole === "spymaster" && playerTeam) {
-      const id = playerTeam === "blue" ? "blue-spymaster-name" : "red-spymaster-name";
-      const span = document.getElementById(id);
-      if (span) span.textContent = playerName;
-    } else if (playerRole === "operative" && playerTeam) {
-      const listId = playerTeam === "blue" ? "blue-operatives-list" : "red-operatives-list";
-      const list = document.getElementById(listId);
-      if (list && list.children.length > 0) {
-        // لاعب واحد من هذا المتصفح
-        list.children[0].textContent = playerName;
-      }
+    else {
+      showInfoOverlay("اختيار غير صحيح.");
+      return;
     }
 
     updatePlayerInfoUI();
-    overlay.classList.add("hidden");
-  };
+    return;
+  }
 
-  document.getElementById("rename-save-btn").onclick = applyName;
-  document.getElementById("rename-cancel-btn").onclick = () => {
-    overlay.classList.add("hidden");
-  };
+  // Seekers: يبدّل بين الفريقين بنفس الدور
+  const choice = prompt(
+    "اختر الفريق الجديد كـ Seekers Cipher:\n" +
+    "1 - الفريق الأحمر\n" +
+    "2 - الفريق الأزرق\n\n" +
+    "اكتب 1 أو 2:"
+  );
+  if (!choice) return;
+
+  if (choice === "1")      chooseRole("red",  "operative");
+  else if (choice === "2") chooseRole("blue", "operative");
+  else {
+    showInfoOverlay("اختيار غير صحيح.");
+    return;
+  }
+
+  updatePlayerInfoUI();
+}
+
+// ===== تغيير الاسم أثناء الجولة =====
+function changeNameInGame() {
+  const oldName = playerName || "لاعب مجهول";
+  const newNameRaw = prompt("اكتب الاسم الجديد:", oldName);
+  if (newNameRaw === null) return;
+
+  const newName = newNameRaw.trim() || "لاعب مجهول";
+  playerName = newName;
+
+  const label = document.getElementById("player-name-label");
+  if (label) label.textContent = playerName;
+
+  updatePlayerInfoUI();
+
+  // تحديث الاسم في اللوبي
+  if (playerRole === "spymaster" && playerTeam) {
+    const id = playerTeam === "blue" ? "blue-spymaster-name" : "red-spymaster-name";
+    const span = document.getElementById(id);
+    if (span) span.textContent = playerName;
+  } else if (playerRole === "operative" && playerTeam) {
+    const listId = playerTeam === "blue" ? "blue-operatives-list" : "red-operatives-list";
+    const list = document.getElementById(listId);
+    if (list && list.children.length > 0) {
+      list.children[0].textContent = playerName;
+    }
+  }
+}
+
+// ===== التحويل إلى Spectator أثناء الجولة لأي دور =====
+function becomeSpectatorInGame() {
+  if (!playerTeam && !playerRole) {
+    showInfoOverlay("أنت بالفعل في وضع Spectator.");
+    return;
+  }
+
+  clearPreviousRoleUI();
+  playerTeam = null;
+  playerRole = null;
+
+  updatePlayerInfoUI();
+
+  const teamLabel = document.getElementById("player-team-label");
+  const roleLabel = document.getElementById("player-role-label");
+  if (teamLabel) teamLabel.textContent = "غير محدد";
+  if (roleLabel) roleLabel.textContent = "غير محدد";
+
+  showInfoOverlay("تم التحويل إلى Spectator. يمكنك استخدام زر تغيير الفريق للانضمام من جديد.");
 }
 
 // ===== بدء اللعبة =====
@@ -977,12 +991,3 @@ function returnToLobbyFromResult() {
 
   updateHostControlsUI();
 }
-
-// ===== ربط الدوال مع window عشان onclick في HTML =====
-window.sendClue                 = sendClue;
-window.returnToLobbyFromResult  = returnToLobbyFromResult;
-window.closeInfoOverlay         = closeInfoOverlay;
-window.leaveRole                = leaveRole;
-window.chooseRole               = chooseRole;
-window.startGame                = startGame;
-window.endRoundAndReturn        = endRoundAndReturn;
