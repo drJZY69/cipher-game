@@ -44,6 +44,15 @@ body {
   margin-top: 4px;
 }
 
+/* ===== عنوان بنمط CIPHER (Gradient) ===== */
+.cipher-title {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899, #facc15);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 16px rgba(139, 92, 246, 0.8);
+}
+
 /* ===== الأزرار ===== */
 button {
   padding: 10px 18px;
@@ -186,6 +195,47 @@ button:hover:not(:disabled) {
   margin-bottom: 10px;
   font-size: 14px;
   color: #e5e7eb;
+}
+
+/* ===== الشريط العلوي داخل اللعبة (تغيير فريق / اسم / كود الغرفة) ===== */
+#in-game-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  text-align: right;
+}
+
+.topbar-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* كبسولة كود الغرفة داخل اللعبة */
+.room-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(248, 250, 252, 0.2);
+  margin-right: auto; /* تخليها تميل لليسار شوي في RTL */
+  font-size: 13px;
+}
+
+.pill-label {
+  color: #9ca3af;
+}
+
+.pill-code {
+  font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 3px;
+  font-weight: 700;
+  color: #fef3c7;
 }
 
 /* ===== شريط الدور والوقت ===== */
@@ -436,6 +486,22 @@ button:hover:not(:disabled) {
 
   .overlay-logo { font-size: 48px; }
   .overlay-text { font-size: 22px; }
+
+  /* topbar في الجوال يصير عمودي */
+  #in-game-topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topbar-btn {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .room-pill {
+    justify-content: center;
+    margin-right: 0;
+  }
 }
 
 @media (max-width: 450px) {
