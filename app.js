@@ -57,22 +57,8 @@ let opsTimeLimit = 90;
 let timerId = null;
 let timerRemaining = 0;
 
-// حوار عام (تغيير اسم / فريق)
+// حوار عام
 let dialogConfirmHandler = null;
-
-// الكلمات
-const ALL_WORDS = [
-  "مكة","المدينة","الرياض","جدة","الدمام","القاهرة","دمشق","بيروت","بغداد","الدوحة",
-  "الكويت","مسقط","المغرب","تونس","الجزائر","ليبيا","فلسطين","الأردن","السودان","تركيا",
-  "أوروبا","آسيا","أفريقيا","أمريكا","اليابان","الصين","الهند","روسيا","البحر","الصحراء",
-  "المحيط","النهر","الجبل","الغابة","العاصفة","البرق","الرعد","القمر","الشمس","النجوم",
-  "سفينة","طائرة","قطار","سيارة","دراجة","مطار","ميناء","ملعب","جامعة","مدرسة",
-  "مسجد","كنيسة","متحف","قصر","برج","فندق","مطعم","مقهى","سوق","مسرح",
-  "قلعة","قرية","مدينة","جزيرة","كوكب","صاروخ","قلم","كتاب","هاتف","كمبيوتر",
-  "لوحة","خريطة","صندوق","مفتاح","سيف","درع","كرة","بطل","ملك","أميرة",
-  "صديق","عدو","جاسوس","سر","خطر","سلام","هجوم","دفاع","فخ","لغز",
-  "ضحك","حزن","خوف","شجاعة","حقيقة","خيانة","أمل","يأس","نور","ظلام"
-];
 
 // ===== أدوات واجهة عامة =====
 function showSection(id) {
@@ -151,7 +137,6 @@ function updateInGameRoomCodeUI() {
 // تحكم الهوست
 function updateHostControlsUI() {
   const startBtn    = document.getElementById("start-game-btn");
-  const newRoundBtn = document.getElementById("new-round-btn");
   const masterInput = document.getElementById("master-time-input");
   const opsInput    = document.getElementById("ops-time-input");
 
@@ -160,16 +145,11 @@ function updateHostControlsUI() {
     else        startBtn.classList.add("hidden");
   }
 
-  if (newRoundBtn) {
-    if (isHost) newRoundBtn.classList.remove("hidden");
-    else        newRoundBtn.classList.add("hidden");
-  }
-
   if (masterInput) masterInput.disabled = !isHost;
   if (opsInput)    opsInput.disabled    = !isHost;
 }
 
-// تحديث اسم/فريق/دور اللاعب في شاشة اللعبة
+// معلومات اللاعب في شاشة اللعبة
 function updatePlayerInfoUI() {
   const nameInfo = document.getElementById("player-name-info");
   const teamInfo = document.getElementById("player-team-info");
@@ -257,7 +237,7 @@ function logEvent(message) {
   logContainer.scrollTop = logContainer.scrollHeight;
 }
 
-// Overlay للرسائل البسيطة
+// Overlay للرسائل
 function showInfoOverlay(message) {
   const overlay = document.getElementById("info-overlay");
   const text    = document.getElementById("info-text");
@@ -272,13 +252,12 @@ function closeInfoOverlay() {
   overlay.classList.add("hidden");
 }
 
-// حوار إدخال (اسم/فريق) بنفس ستايل CIPHER
+// حوار إدخال بنفس ستايل CIPHER
 function showInputDialog(message, defaultValue, placeholder, onConfirm) {
   const overlay   = document.getElementById("dialog-overlay");
   const textEl    = document.getElementById("dialog-text");
   const inputEl   = document.getElementById("dialog-input");
 
-  // fallback لو ما تم تحديث الـ HTML
   if (!overlay || !textEl || !inputEl) {
     const v = prompt(message, defaultValue || "");
     if (v === null) return;
@@ -291,12 +270,28 @@ function showInputDialog(message, defaultValue, placeholder, onConfirm) {
   inputEl.placeholder = placeholder || "";
   overlay.classList.remove("hidden");
   inputEl.focus();
+
   dialogConfirmHandler = () => {
     const val = inputEl.value;
     overlay.classList.add("hidden");
     dialogConfirmHandler = null;
     onConfirm(val);
   };
+}
+
+// عدّ تنازلي بصري
+function showCountdown(n) {
+  const overlay = document.getElementById("countdown-overlay");
+  const numEl   = document.getElementById("countdown-number");
+  if (!overlay || !numEl) return;
+  numEl.textContent = n;
+  overlay.classList.remove("hidden");
+}
+
+function hideCountdown() {
+  const overlay = document.getElementById("countdown-overlay");
+  if (!overlay) return;
+  overlay.classList.add("hidden");
 }
 
 // هل يقدر يلمس الكروت الآن؟
@@ -316,9 +311,7 @@ function canInteractWithCards(showMessage) {
   return true;
 }
 
-// التايمر
-
-// تحديث قيم التايمر من المدخلات (مهم عشان المشكلة اللي عندك)
+// تحديث قيم التايمر من المدخلات
 function refreshTimeLimitsFromInputs() {
   const masterInput = document.getElementById("master-time-input");
   const opsInput    = document.getElementById("ops-time-input");
@@ -334,8 +327,10 @@ function refreshTimeLimitsFromInputs() {
   }
 }
 
+// ===== التايمر =====
 function startPhaseTimer(phaseType) {
   stopTimer();
+  hideCountdown();
 
   timerRemaining = (phaseType === "clue") ? masterTimeLimit : opsTimeLimit;
   updateTimerLabel();
@@ -345,12 +340,13 @@ function startPhaseTimer(phaseType) {
     updateTimerLabel();
 
     if (timerRemaining > 0 && timerRemaining <= 10) {
+      showCountdown(timerRemaining);
       playSfx("sfx-tick");
-      showClueToast(`${timerRemaining}`);
     }
 
     if (timerRemaining <= 0) {
       stopTimer();
+      hideCountdown();
       handleTimerEnd();
     }
   }, 1000);
@@ -364,18 +360,47 @@ function clearAllSusMarkers() {
   });
 }
 
+// تحديث البورد بناءً على الرول (Spy / Spectator / Seekers)
+function refreshBoardForCurrentRole() {
+  if (!boardState || boardState.length === 0) return;
+  boardState.forEach((card, i) => {
+    const div = document.querySelector(`.card[data-index="${i}"]`);
+    if (!div) return;
+
+    div.classList.remove(
+      "spy-map-red",
+      "spy-map-blue",
+      "spy-map-neutral",
+      "spy-map-assassin"
+    );
+
+    if (playerRole === "spymaster") {
+      if (card.team === "red")      div.classList.add("spy-map-red");
+      if (card.team === "blue")     div.classList.add("spy-map-blue");
+      if (card.team === "neutral")  div.classList.add("spy-map-neutral");
+      if (card.team === "assassin") div.classList.add("spy-map-assassin");
+    }
+  });
+}
+
 function handleTimerEnd() {
   if (phase === "clue") {
+    const oldTeam = currentTeamTurn;
+
     if (!currentClueText || currentClueTeam !== currentTeamTurn) {
-      const oldTeam = currentTeamTurn;
       currentTeamTurn = currentTeamTurn === "red" ? "blue" : "red";
       phase = "clue";
       currentClueText = "";
       currentClueTeam = null;
       clearAllSusMarkers();
-      logEvent(`⏰ انتهى وقت التلميح للفريق ${oldTeam === "red" ? "الأحمر" : "الأزرق"}، تم تمرير الدور للفريق الآخر.`);
+
+      const teamName = oldTeam === "red" ? "الأحمر" : "الأزرق";
+      const otherTeamName = oldTeam === "red" ? "الأزرق" : "الأحمر";
+
+      const msg = `انتهى وقت التلميح للفريق ${teamName}، تم تمرير الدور للفريق ${otherTeamName}.`;
+      logEvent(`⏰ ${msg}`);
       playSfx("sfx-turn-change");
-      showClueToast("انتهى الوقت، الدور للفريق الآخر");
+      showClueToast(msg);
 
       updateTurnUI();
       updateClueUI();
@@ -396,9 +421,14 @@ function handleTimerEnd() {
     currentClueText = "";
     currentClueTeam = null;
     clearAllSusMarkers();
-    logEvent(`⏰ انتهى وقت اختيار البطاقات للفريق ${oldTeam === "red" ? "الأحمر" : "الأزرق"}، الدور ينتقل للفريق الآخر.`);
+
+    const teamName = oldTeam === "red" ? "الأحمر" : "الأزرق";
+    const otherTeamName = oldTeam === "red" ? "الأزرق" : "الأحمر";
+
+    const msg = `انتهى وقت اختيار البطاقات للفريق ${teamName}، تم تمرير الدور للفريق ${otherTeamName}.`;
+    logEvent(`⏰ ${msg}`);
     playSfx("sfx-turn-change");
-    showClueToast("انتهى الوقت، الدور للفريق الآخر");
+    showClueToast(msg);
 
     updateTurnUI();
     updateClueUI();
@@ -481,7 +511,7 @@ window.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // زر "دخول اللعبة (Spectator)" — فقط ينقلك للواجهة، ما يبدأ الجولة
+  // زر "دخول اللعبة (Spectator)" – ما يبدأ جولة، بس يفتح شاشة اللعب
   if (enterGameBtn) {
     enterGameBtn.onclick = () => {
       const box = document.querySelector(".box");
@@ -491,7 +521,8 @@ window.addEventListener("DOMContentLoaded", () => {
       updateInGameRoomCodeUI();
       showSection("game-area");
       updateHostControlsUI();
-      // الهوست لازم يضغط "بدء اللعبة"
+      refreshBoardForCurrentRole();
+      updateClueUI();
     };
   }
 
@@ -552,15 +583,15 @@ window.addEventListener("DOMContentLoaded", () => {
   if (resultToLobbyBtn) resultToLobbyBtn.onclick = () => returnToLobbyFromResult();
 
   // أزرار أعلى الشاشة داخل الجولة
-  const changeTeamBtn = document.getElementById("btn-change-team");
-  const changeNameBtn = document.getElementById("btn-change-name");
-  const toSpectatorBtn = document.getElementById("btn-to-spectator");
+  const changeTeamBtn   = document.getElementById("btn-change-team");
+  const changeNameBtn   = document.getElementById("btn-change-name");
+  const toSpectatorBtn  = document.getElementById("btn-to-spectator");
 
   if (changeTeamBtn)   changeTeamBtn.onclick   = () => changeTeamInGame();
   if (changeNameBtn)   changeNameBtn.onclick   = () => changeNameInGame();
   if (toSpectatorBtn)  toSpectatorBtn.onclick  = () => changeToSpectatorInGame();
 
-  // لاقط عام فقط لزر "حسناً" لو فيه نسخ أخرى
+  // لاقط عام لزر "حسناً"
   document.addEventListener("click", (event) => {
     const el  = event.target;
     if (!el) return;
@@ -606,6 +637,10 @@ function leaveRole() {
 
   const startBtn = document.getElementById("start-game-btn");
   if (isHost && startBtn) startBtn.disabled = true;
+
+  updatePlayerInfoUI();
+  updateClueUI();
+  refreshBoardForCurrentRole();
 }
 
 function chooseRole(team, role) {
@@ -651,11 +686,13 @@ function chooseRole(team, role) {
   if (isHost && startBtn) startBtn.disabled = false;
 
   updatePlayerInfoUI();
+  updateClueUI();
+  refreshBoardForCurrentRole();
 }
 
 // ===== تغيير الفريق أثناء الجولة =====
 function changeTeamInGame() {
-  // Spectator: يختار أي رول
+  // Spectator: يقدر يختار أي رول
   if (!playerRole) {
     const msg =
       "اختر الرقم:\n" +
@@ -679,12 +716,11 @@ function changeTeamInGame() {
         showInfoOverlay("اختيار غير صحيح.");
         return;
       }
-      updatePlayerInfoUI();
     });
     return;
   }
 
-  // Seekers: يقدر يبدّل بين الأحمر والأزرق فقط
+  // Seekers: يبدل بين الأحمر والأزرق فقط
   if (playerRole === "operative") {
     const msg =
       "اختر الرقم:\n" +
@@ -702,12 +738,11 @@ function changeTeamInGame() {
         showInfoOverlay("اختيار غير صحيح.");
         return;
       }
-      updatePlayerInfoUI();
     });
     return;
   }
 
-  // Clue Cipher: يقدر يتنقل للفريق الآخر لو ما فيه Clue هناك
+  // Clue Cipher: يقدر يتنقل للفريق الآخر لو فاضي
   if (playerRole === "spymaster") {
     const otherTeam = playerTeam === "red" ? "blue" : "red";
     const otherSpan = document.getElementById(
@@ -729,7 +764,6 @@ function changeTeamInGame() {
       const choice = (val || "").trim();
       if (choice === "2") {
         chooseRole(otherTeam, "spymaster");
-        updatePlayerInfoUI();
       }
     });
   }
@@ -748,7 +782,6 @@ function changeNameInGame() {
 
     updatePlayerInfoUI();
 
-    // تحديث الاسم في اللوبي
     if (playerRole === "spymaster" && playerTeam) {
       const id = playerTeam === "blue" ? "blue-spymaster-name" : "red-spymaster-name";
       const span = document.getElementById(id);
@@ -763,10 +796,9 @@ function changeNameInGame() {
   });
 }
 
-// تحويل أي رول إلى Spectator أثناء اللعب
+// تحويل أي رول إلى Spectator
 function changeToSpectatorInGame() {
   leaveRole();
-  updatePlayerInfoUI();
   showClueToast("تم تحويلك إلى Spectator.");
 }
 
@@ -777,13 +809,11 @@ function startGame() {
     return;
   }
 
-  // لازم ينضم لدور واحد على الأقل
   if (!playerTeam || !playerRole) {
     showInfoOverlay("انضم أولاً لأحد الأدوار في أحد الفريقين قبل بدء اللعبة.");
     return;
   }
 
-  // نتأكد إن قيم التايمر محدثة
   refreshTimeLimitsFromInputs();
 
   const box = document.querySelector(".box");
@@ -800,7 +830,6 @@ function startGame() {
 
 // جولة جديدة
 function startNewRoundFlow() {
-  // كل جولة جديدة نقرأ الوقت من المدخلات (عشان لو غيرته بين الجولات)
   refreshTimeLimitsFromInputs();
 
   const overlay = document.getElementById("result-overlay");
@@ -907,15 +936,11 @@ function setupBoard() {
       handleCardDoubleClick(i);
     };
 
-    if (playerRole === "spymaster") {
-      if (card.team === "red")      div.classList.add("spy-map-red");
-      if (card.team === "blue")     div.classList.add("spy-map-blue");
-      if (card.team === "neutral")  div.classList.add("spy-map-neutral");
-      if (card.team === "assassin") div.classList.add("spy-map-assassin");
-    }
-
     board.appendChild(div);
   });
+
+  // بعد ما نبني البورد، نطبّق رؤية السباي ماستر لو موجود
+  refreshBoardForCurrentRole();
 }
 
 // sus marker
@@ -1038,6 +1063,7 @@ function checkWin() {
 // شاشة النتيجة
 function showResult(type) {
   stopTimer();
+  hideCountdown();
 
   const overlay = document.getElementById("result-overlay");
   const text    = document.getElementById("result-text");
@@ -1066,6 +1092,7 @@ function showResult(type) {
 // رجوع للوبي بعد النتيجة
 function returnToLobbyFromResult() {
   stopTimer();
+  hideCountdown();
   const overlay = document.getElementById("result-overlay");
   if (overlay) overlay.classList.add("hidden");
 
