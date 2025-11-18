@@ -92,7 +92,7 @@ async function fetchRoomByCode(code) {
 }
 
 // إضافة لاعب لجدول players
-async function addPlayerToRoom(code, name, team = null, role = null) {
+async function addPlayerToRoom(code, name, team = "none", role = "none") {
   if (!supa) return;
 
   try {
@@ -101,8 +101,8 @@ async function addPlayerToRoom(code, name, team = null, role = null) {
       .insert({
         room_code: code,
         name: name,
-        team: team,
-        role: role
+        team: team,   // ما عاد ترسل null أبداً
+        role: role    // نفس الشي
       })
       .select()
       .single();
@@ -118,6 +118,7 @@ async function addPlayerToRoom(code, name, team = null, role = null) {
     console.error("addPlayerToRoom fatal:", e);
   }
 }
+
 
 // ===== كود اللعبة =====
 
@@ -845,4 +846,5 @@ function returnToLobbyFromResult() {
 
   updateHostControlsUI();
 }
+
 
