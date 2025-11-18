@@ -1,127 +1,110 @@
-// ===== تهيئة Supabase =====
-const SUPABASE_URL = "https://yifgimztfhbyocdwrqjr.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZmdpbXp0ZmhieW9jZHdycWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MjAxNzYsImV4cCI6MjA3ODk5NjE3Nn0.g2809m0EjwpfHn9UzM4iPVhU6NAFAgB1HNs6D9ur4TQ";
+// ===== تهيئة Firebase + Firestore =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  collection,
+  addDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-let supa = null;
-if (typeof supabase !== "undefined") {
-  supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-} else {
-  console.error("Supabase library not loaded! تأكد من وسم السكربت في index.html");
-}
+// الإعدادات من لوحة Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyB2OQo-eP3L_CzUbYjzqP7AaM1i8-_kXNs",
+  authDomain: "cipher-game-9607e.firebaseapp.com",
+  projectId: "cipher-game-9607e",
+  storageBucket: "cipher-game-9607e.firebasestorage.app",
+  messagingSenderId: "833688921550",
+  appId: "1:833688921550:web:9e265dfc1cc5bcde58779f"
+};
+
+// تشغيل Firebase + Firestore
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
 
 // فحص اتصال سريع
-async function testSupabaseConnection() {
-  if (!supa) {
-    console.error("Supabase client is null – ما تم إنشاؤه.");
-    return;
-  }
+async function testFirebaseConnection() {
   try {
-    const { error } = await supa.from("rooms").select("id").limit(1);
-    if (error) {
-      console.error("Supabase connection ERROR:", error.message || error);
-    } else {
-      console.log("Supabase connection OK.");
-    }
+    const pingRef = doc(db, "meta", "ping");
+    await setDoc(
+      pingRef,
+      { lastPing: Date.now() },
+      { merge: true }
+    );
+    console.log("Firebase connection OK.");
   } catch (e) {
-    console.error("Supabase fatal error:", e);
+    console.error("Firebase connection ERROR:", e);
   }
 }
 
-// ===== دوال Supabase للغرف واللاعبين =====
+// ===== دوال Firestore للغرف واللاعبين =====
 
 // إنشاء غرفة جديدة في rooms
 async function createRoomInDb(code, hostName, startTeam) {
-  if (!supa) return true; // أوفلاين
-
   const safeStart = startTeam || "red";
 
   try {
-    const { data, error } = await supa
-      .from("rooms")
-      .insert({
-        code: code,
-        host_name: hostName,
-        starting_team: safeStart,
-        current_team: safeStart,
-        phase: "lobby",
-        board_state: []
-      })
-      .select()
-      .single();
+    const roomRef = doc(db, "rooms", code);
 
-    if (error) {
-      console.error("createRoomInDb error:", error);
-      showInfoOverlay("ما قدرنا ننشئ الغرفة في السيرفر، جرّب بعد شوي.");
-      return false;
-    }
+    await setDoc(roomRef, {
+      code: code,
+      host_name: hostName,
+      starting_team: safeStart,
+      current_team: safeStart,
+      phase: "lobby",
+      board_state: [],
+      created_at: serverTimestamp()
+    });
 
-    console.log("Room created in DB:", data);
+    console.log("Room created in DB:", { code, hostName, safeStart });
     return true;
   } catch (e) {
-    console.error("createRoomInDb fatal:", e);
-    showInfoOverlay("صار خطأ غير متوقع أثناء إنشاء الغرفة.");
+    console.error("createRoomInDb error:", e);
+    showInfoOverlay("ما قدرنا ننشئ الغرفة في السيرفر، جرّب بعد شوي.");
     return false;
   }
 }
 
 // التحقق إذا الكود موجود في rooms
 async function checkRoomExistsInDb(code) {
-  if (!supa) return true;
-
   try {
-    const { data, error } = await supa
-      .from("rooms")
-      .select("id")
-      .eq("code", code)
-      .limit(1);
-
-    if (error) {
-      console.error("checkRoomExistsInDb error:", error);
-      return true;
-    }
-
-    return data && data.length > 0;
+    const roomRef = doc(db, "rooms", code);
+    const snap    = await getDoc(roomRef);
+    return snap.exists();
   } catch (e) {
-    console.error("checkRoomExistsInDb fatal:", e);
+    console.error("checkRoomExistsInDb error:", e);
+    // لو فيه خطأ من السيرفر ما نمنع اللاعب من المحاولة
     return true;
   }
 }
 
-// إضافة لاعب إلى players
+// إضافة لاعب إلى players (subcollection داخل الغرفة)
 async function addPlayerToRoom(code, name, team, role) {
-  if (!supa) return;
-
   const safeTeam = team || "none";
   const safeRole = role || "none";
 
   try {
-    const { data, error } = await supa
-      .from("players")
-      .insert({
-        room_code: code,
-        name: name,
-        team: safeTeam,
-        role: safeRole
-      })
-      .select()
-      .single();
+    const playersCol = collection(db, "rooms", code, "players");
+    const docRef = await addDoc(playersCol, {
+      name: name,
+      team: safeTeam,
+      role: safeRole,
+      joined_at: serverTimestamp()
+    });
 
-    if (error) {
-      console.error("addPlayerToRoom error:", error);
-      showInfoOverlay("ما قدرنا نضيفك كلاعب في الغرفة، جرّب مرة ثانية.");
-      return;
-    }
-
-    console.log("Player added:", data);
+    console.log("Player added:", { id: docRef.id, name, safeTeam, safeRole });
   } catch (e) {
-    console.error("addPlayerToRoom fatal:", e);
+    console.error("addPlayerToRoom error:", e);
+    showInfoOverlay("ما قدرنا نضيفك كلاعب في الغرفة، جرّب مرة ثانية.");
   }
 }
 
-// حفظ حالة الغرفة في قاعدة البيانات (بدون clue_team نهائياً)
+// حفظ حالة الغرفة في قاعدة البيانات
 async function saveRoomStateToDb() {
-  if (!supa || !roomCode) return;
+  if (!roomCode) return;
 
   const payload = {
     current_team: currentTeamTurn || startingTeam || "red",
@@ -130,16 +113,11 @@ async function saveRoomStateToDb() {
   };
 
   try {
-    const { error } = await supa
-      .from("rooms")
-      .update(payload)
-      .eq("code", roomCode);
-
-    if (error) {
-      console.error("saveRoomStateToDb error:", error);
-    }
+    const roomRef = doc(db, "rooms", roomCode);
+    await updateDoc(roomRef, payload);
+    // console.log("Room state saved.");
   } catch (e) {
-    console.error("saveRoomStateToDb fatal:", e);
+    console.error("saveRoomStateToDb error:", e);
   }
 }
 
@@ -451,7 +429,7 @@ function handleTimerEnd() {
 
 // ===== شاشة البداية: هوست / انضمام =====
 window.addEventListener("DOMContentLoaded", () => {
-  testSupabaseConnection();
+  testFirebaseConnection();
 
   const nicknameInput = document.getElementById("nickname-input");
   const hostBtn       = document.getElementById("btn-host");
