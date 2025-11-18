@@ -1,4 +1,4 @@
-// ===== تهيئة Supabase (جديدة) =====
+// ===== تهيئة Supabase =====
 const SUPABASE_URL = "https://yifgimztfhbyocdwrqjr.supabase.co"; // ثابتة لمشروعك
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZmdpbXp0ZmhieW9jZHdycWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MjAxNzYsImV4cCI6MjA3ODk5NjE3Nn0.g2809m0EjwpfHn9UzM4iPVhU6NAFAgB1HNs6D9ur4TQ";
 
@@ -9,7 +9,7 @@ if (typeof supabase !== "undefined") {
   console.error("Supabase library not loaded! تأكد من وسم السكربت في index.html");
 }
 
-// اختبار بسيط نتأكد Supabase شغّال (نشتغله عند تحميل الصفحة)
+// اختبار بسيط نتأكد Supabase شغّال
 async function testSupabaseConnection() {
   if (!supa) {
     console.error("Supabase client is null – ما تم إنشاؤه.");
@@ -27,8 +27,6 @@ async function testSupabaseConnection() {
     console.error("Supabase fatal error:", e);
   }
 }
-
-// ===== بقية كود اللعبة الأصلي =====
 
 console.log("CIPHER Loaded");
 
@@ -75,6 +73,18 @@ const ALL_WORDS = [
   "ضحك","حزن","خوف","شجاعة","حقيقة","خيانة","أمل","يأس","نور","ظلام"
 ];
 
+// ===== أدوات عامة للصوت =====
+function playSfx(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    el.currentTime = 0;
+    el.play();
+  } catch (e) {
+    // لو المتصفح منع التشغيل التلقائي
+  }
+}
+
 // === أدوات واجهة عامة ===
 function showSection(id) {
   document.querySelectorAll(".section").forEach(sec => sec.classList.add("hidden"));
@@ -90,6 +100,20 @@ function formatTime(sec) {
 function updateTimerLabel() {
   const el = document.getElementById("timer-label");
   if (el) el.textContent = formatTime(timerRemaining);
+}
+
+// تحديث العد التنازلي البصري
+function updateCountdownOverlay() {
+  const overlay = document.getElementById("countdown-overlay");
+  const numEl = document.getElementById("countdown-number");
+  if (!overlay || !numEl) return;
+
+  if (timerRemaining <= 10 && timerRemaining > 0) {
+    overlay.classList.remove("hidden");
+    numEl.textContent = timerRemaining;
+  } else {
+    overlay.classList.add("hidden");
+  }
 }
 
 function stopTimer() {
@@ -261,10 +285,16 @@ function startPhaseTimer(phaseType) {
   }
 
   updateTimerLabel();
+  updateCountdownOverlay();
 
   timerId = setInterval(() => {
     timerRemaining--;
     updateTimerLabel();
+    updateCountdownOverlay();
+
+    if (timerRemaining <= 10 && timerRemaining > 0) {
+      playSfx("sfx-countdown");
+    }
 
     if (timerRemaining <= 0) {
       stopTimer();
@@ -282,6 +312,17 @@ function clearAllSusMarkers() {
 }
 
 function handleTimerEnd() {
+  // افكت نص "انتهى الدور" بالنص
+  const cdOverlay = document.getElementById("countdown-overlay");
+  const cdNumber = document.getElementById("countdown-number");
+  if (cdOverlay && cdNumber) {
+    cdOverlay.classList.remove("hidden");
+    cdNumber.textContent = "انتهى الدور";
+    setTimeout(() => {
+      cdOverlay.classList.add("hidden");
+    }, 1200);
+  }
+
   if (phase === "clue") {
     if (!currentClueText || currentClueTeam !== currentTeamTurn) {
       const oldTeam = currentTeamTurn;
@@ -295,6 +336,7 @@ function handleTimerEnd() {
       updateTurnUI();
       updateClueUI();
       startPhaseTimer("clue");
+      playSfx("sfx-turn");
     } else {
       phase = "guess";
       clearAllSusMarkers();
@@ -315,12 +357,13 @@ function handleTimerEnd() {
     updateTurnUI();
     updateClueUI();
     startPhaseTimer("clue");
+    playSfx("sfx-turn");
   }
 }
 
 // ===== شاشة البداية: هوست / انضمام =====
 window.addEventListener("DOMContentLoaded", () => {
-  // أول شيء: نختبر اتصال Supabase
+  // نختبر اتصال Supabase
   testSupabaseConnection();
 
   const nicknameInput = document.getElementById("nickname-input");
@@ -454,7 +497,7 @@ function startGame() {
   startNewRoundFlow();
 }
 
-// بدء جولة جديدة كاملة (داخليا بعد startGame)
+// بدء جولة جديدة كاملة (داخلياً بعد startGame)
 function startNewRoundFlow() {
   const overlay = document.getElementById("result-overlay");
   overlay.classList.add("hidden");
@@ -470,6 +513,9 @@ function startNewRoundFlow() {
   currentClueTeam = null;
 
   logEvent(`🚩 بدء جولة جديدة. الفريق الذي يبدأ: ${currentTeamTurn === "red" ? "الأحمر" : "الأزرق"}.`);
+
+  playSfx("sfx-roundstart");
+  playSfx("sfx-turn");
 
   updateTurnUI();
   updateClueUI();
@@ -629,6 +675,7 @@ function sendClue() {
   updateClueUI();
 
   showClueToast(`تلميح: ${currentClueText} — للفريق ${teamLabel}`);
+  playSfx("sfx-clue");
 
   phase = "guess";
   clearAllSusMarkers();
@@ -650,26 +697,39 @@ function revealCard(i) {
   el.className = "card";
 
   const teamLabelOp = playerTeam === "red" ? "الأحمر" : "الأزرق";
+  const isMyTurn = (playerTeam === currentTeamTurn);
 
   if (card.team === "red") {
     el.classList.add("revealed-red");
     remainingRed--;
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة حمراء).`);
+    if (isMyTurn) {
+      if (card.team === currentTeamTurn) playSfx("sfx-correct");
+      else playSfx("sfx-wrong");
+    }
     checkWin();
   }
   else if (card.team === "blue") {
     el.classList.add("revealed-blue");
     remainingBlue--;
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة زرقاء).`);
+    if (isMyTurn) {
+      if (card.team === currentTeamTurn) playSfx("sfx-correct");
+      else playSfx("sfx-wrong");
+    }
     checkWin();
   }
   else if (card.team === "neutral") {
     el.classList.add("revealed-neutral");
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة حيادية).`);
+    if (isMyTurn) {
+      playSfx("sfx-wrong");
+    }
   }
   else if (card.team === "assassin") {
     el.classList.add("revealed-assassin");
     logEvent(`☠ [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة قاتل!).`);
+    playSfx("sfx-lose");
     showResult("assassin");
   }
 }
@@ -695,14 +755,17 @@ function showResult(type) {
   if (type === "red") {
     overlay.style.background = "rgba(255,0,0,0.35)";
     text.textContent = "🔥 مبروك! الفريق الأحمر فاز!";
+    playSfx("sfx-win");
   }
   else if (type === "blue") {
     overlay.style.background = "rgba(0,0,255,0.35)";
     text.textContent = "🔥 مبروك! الفريق الأزرق فاز!";
+    playSfx("sfx-win");
   }
   else {
     overlay.style.background = "rgba(0,0,0,0.8)";
     text.textContent = "☠ خسارة! تم اختيار بطاقة القاتل!";
+    playSfx("sfx-lose");
   }
 }
 
@@ -717,5 +780,3 @@ function returnToLobbyFromResult() {
 
   updateHostControlsUI();
 }
-
-
