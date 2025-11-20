@@ -22,12 +22,6 @@
       <span id="room-code-text"></span>
       – <span id="host-or-guest-label">-</span>
     </div>
-
-    <div class="game-info">
-      اللاعب: <span id="player-name-label">-</span> ·
-      فريقك: <span id="player-team-label">غير محدد</span> ·
-      دورك: <span id="player-role-label">غير محدد</span>
-    </div>
   </div>
 
   <!-- شاشة البداية -->
@@ -83,7 +77,6 @@
 
     <!-- اختيار الفرق والأدوار -->
     <div class="teams-row">
-      <!-- الفريق الأزرق -->
       <div class="team-card blue">
         <h3>الفريق الأزرق</h3>
 
@@ -104,7 +97,6 @@
         </div>
       </div>
 
-      <!-- الفريق الأحمر -->
       <div class="team-card red">
         <h3>الفريق الأحمر</h3>
 
@@ -152,36 +144,29 @@
       <button onclick="goBackToMainMenu()">إنهاء والعودة للقائمة</button>
     </div>
 
-    <!-- لوحة التلميح -->
     <div class="clue-panel">
       <div class="clue-form" id="clue-form">
-        <div>إرسال تلميح (Clue Cipher للفريق الحالي فقط)</div>
+        <div>إرسال تلميح (Clue Cipher)</div>
         <input id="clue-word-input" type="text" placeholder="كلمة التلميح">
         <input id="clue-count-input" type="number" min="1" max="9" value="1">
         <button onclick="sendClue()">إرسال التلميح</button>
       </div>
 
       <div>
-        آخر تلميح: <strong id="clue-text">لا يوجد تلميح بعد</strong>
-        <br />
+        آخر تلميح: <strong id="clue-text">لا يوجد تلميح بعد</strong><br>
         لصالح: <span id="clue-team">-</span>
       </div>
     </div>
 
-    <!-- البورد -->
     <div id="board" class="board"></div>
 
-    <!-- اللوق -->
     <div class="log-panel">
       <h3>سجل الجولة</h3>
       <div id="log-entries"></div>
     </div>
   </section>
 
-  <!-- توست التلميح -->
-  <div id="clue-toast" class="clue-toast hidden"></div>
-
-  <!-- Overlay: رسائل بسيطة -->
+  <!-- رسائل Overlay -->
   <div id="info-overlay" class="overlay hidden">
     <div class="overlay-box">
       <div class="overlay-logo">CIPHER</div>
@@ -192,33 +177,15 @@
     </div>
   </div>
 
-  <!-- Overlay: نتيجة الفوز / الخسارة -->
-  <div id="result-overlay" class="overlay hidden">
-    <div class="overlay-box result-card">
-      <div class="overlay-logo">CIPHER</div>
-      <div id="result-title" class="result-title">نتيجة الجولة</div>
-      <div id="result-text" class="overlay-text">-</div>
-      <div class="overlay-actions">
-        <button onclick="endRoundAndReturn()">رجوع إلى اللوبي</button>
-        <button onclick="returnToLobbyFromResult()">عرض اللوبي بدون إنهاء</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Overlay: تغيير الاسم -->
+  <!-- Overlay تغيير الاسم -->
   <div id="change-name-overlay" class="overlay hidden">
     <div class="overlay-box">
       <div class="overlay-logo">CIPHER</div>
-      <div class="overlay-text">غيّر لقبك الذي يظهر للجميع</div>
-      <input id="change-name-input"
-             class="overlay-input"
-             type="text"
-             placeholder="اكتب لقبك الجديد" />
+      <div class="overlay-text">غيّر لقبك الظاهر للجميع</div>
+      <input id="change-name-input" class="overlay-input" type="text" placeholder="اكتب لقبك" />
       <div class="overlay-actions">
-        <button onclick="confirmChangeName()">تأكيد التغيير</button>
-        <button onclick="document.getElementById('change-name-overlay').classList.add('hidden')">
-          إلغاء
-        </button>
+        <button onclick="confirmChangeName()">تأكيد</button>
+        <button onclick="document.getElementById('change-name-overlay').classList.add('hidden')">إلغاء</button>
       </div>
     </div>
   </div>
