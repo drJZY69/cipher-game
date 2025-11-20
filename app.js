@@ -1,11 +1,14 @@
 console.log("CIPHER Loaded");
 
 // ===== إعداد Firebase =====
-// ⚠️ غيّر القيم حسب مشروعك من Firebase console (Project settings -> General -> SDK setup)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
+  apiKey: "AIzaSyB2OQo-eP3L_CzUbYjzqP7AaM1i8-_kXNs",
+  authDomain: "cipher-game-9607e.firebaseapp.com",
+  databaseURL: "https://cipher-game-9607e-default-rtdb.firebaseio.com",
+  projectId: "cipher-game-9607e",
+  storageBucket: "cipher-game-9607e.firebasestorage.app",
+  messagingSenderId: "833688921550",
+  appId: "1:833688921550:web:9e265dfc1cc5bcde58779f"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -846,3 +849,4 @@ function returnToLobbyFromResult() {
 
   updateHostControlsUI();
 }
+
