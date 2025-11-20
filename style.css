@@ -178,6 +178,11 @@ button:hover:not(:disabled) {
 .team-card.blue { border: 1px solid #60a5fa; }
 .team-card.red  { border: 1px solid #f97373; }
 
+.team-card h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
 .role-block { margin-bottom: 16px; }
 .role-title { font-weight: 700; margin-bottom: 4px; }
 .role-value { opacity: 0.85; font-size: 14px; }
@@ -324,12 +329,12 @@ button:hover:not(:disabled) {
   display: none;
 }
 
-/* chosen marker (بطاقة اختارها الـ Seekers تظهر للـ Clue فقط) */
+/* marker الكرت اللي اختاره Seekers (يظهر عند Clue Cipher فقط) */
 .chosen-marker {
   position: absolute;
-  top: 4px;
+  bottom: 4px;
   right: 6px;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 /* ===== ألوان الكشف ===== */
@@ -387,7 +392,7 @@ button:hover:not(:disabled) {
   opacity: 0.95;
 }
 
-/* ===== شاشة الفوز / الرسائل ===== */
+/* ===== شاشة الفوز / الرسائل الأساسية ===== */
 .overlay {
   position: fixed;
   top: 0;
@@ -403,10 +408,18 @@ button:hover:not(:disabled) {
 
 .overlay.hidden { display: none; }
 
-.overlay-box { text-align: center; }
+.overlay-box {
+  text-align: center;
+  padding: 24px 32px;
+  border-radius: 24px;
+  background: rgba(15,23,42,0.95);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  max-width: 480px;
+}
 
+/* شعار CIPHER داخل الـ Overlay */
 .overlay-logo {
-  font-size: 65px;
+  font-size: 48px;
   font-weight: 900;
   letter-spacing: 6px;
   color: #fff;
@@ -414,12 +427,13 @@ button:hover:not(:disabled) {
   margin-bottom: 10px;
 }
 
+/* نص رئيسي */
 .overlay-text {
-  font-size: 28px;
+  font-size: 20px;
   margin-bottom: 20px;
 }
 
-/* ===== حقل تغيير الاسم داخل الـ Overlay ===== */
+/* حقل تغيير الاسم داخل الـ Overlay */
 .overlay-input {
   width: 100%;
   max-width: 320px;
@@ -430,21 +444,45 @@ button:hover:not(:disabled) {
   font-size: 16px;
   text-align: center;
 
-  background: rgba(15, 23, 42, 0.95); /* كحلي غامق */
+  background: rgba(15, 23, 42, 0.95);
   color: #fff;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.9); /* حافة خفيفة */
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.9);
 }
 
 .overlay-input::placeholder {
   color: #9ca3af;
 }
 
-/* أزرار أسفل حقل تغيير الاسم داخل الـ Overlay */
+/* أزرار أسفل حقل تغيير الاسم / النتيجة */
 .overlay-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
+}
+
+/* ===== ستايل شاشة النتيجة حسب الفريق ===== */
+.result-card {
+  position: relative;
+}
+
+.result-title {
+  font-size: 26px;
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+
+/* إضاءة الخلفية حسب نتيجة الجولة */
+#result-overlay.result-red {
+  background: radial-gradient(circle at top, rgba(248,113,113,0.8), rgba(0,0,0,0.95));
+}
+
+#result-overlay.result-blue {
+  background: radial-gradient(circle at top, rgba(96,165,250,0.8), rgba(0,0,0,0.95));
+}
+
+#result-overlay.result-black {
+  background: radial-gradient(circle at top, rgba(15,15,15,0.95), rgba(0,0,0,1));
 }
 
 /* ===== الجوال / التابلت ===== */
@@ -473,8 +511,8 @@ button:hover:not(:disabled) {
     width: 100%;
   }
 
-  .overlay-logo { font-size: 48px; }
-  .overlay-text { font-size: 22px; }
+  .overlay-logo { font-size: 40px; }
+  .overlay-text { font-size: 18px; }
 
   .global-actions,
   .game-global-buttons,
