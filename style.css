@@ -324,6 +324,14 @@ button:hover:not(:disabled) {
   display: none;
 }
 
+/* chosen marker (بطاقة اختارها الـ Seekers تظهر للـ Clue فقط) */
+.chosen-marker {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 18px;
+}
+
 /* ===== ألوان الكشف ===== */
 .card.revealed-red    { background: #f87171; }
 .card.revealed-blue   { background: #60a5fa; }
