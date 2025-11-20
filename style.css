@@ -138,6 +138,19 @@ button:hover:not(:disabled) {
   margin-bottom: 10px;
 }
 
+/* أزرار عامة في اللوبي (رجوع للقائمة / تغيير الاسم / تغيير الفريق) */
+.global-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 10px 0 18px;
+}
+
+.global-actions button {
+  min-width: 180px;
+}
+
 /* ===== معلومات الغرفة ===== */
 .room-info {
   margin: 8px 0 4px 0;
@@ -200,6 +213,19 @@ button:hover:not(:disabled) {
 #timer-label {
   font-weight: 700;
   color: #fef3c7;
+}
+
+/* أزرار عامة داخل الجولة (نفس ستايل اللوبي) */
+.game-global-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 8px 0 14px;
+}
+
+.game-global-buttons button {
+  min-width: 180px;
 }
 
 /* ===== نظام التلميح ===== */
@@ -413,6 +439,11 @@ button:hover:not(:disabled) {
 
   .overlay-logo { font-size: 48px; }
   .overlay-text { font-size: 22px; }
+
+  .global-actions,
+  .game-global-buttons {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 450px) {
