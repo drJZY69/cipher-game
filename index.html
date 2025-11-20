@@ -64,7 +64,7 @@
     <!-- أزرار عامة في اللوبي -->
     <div class="global-actions">
       <button onclick="goBackToMainMenu()">الرجوع إلى القائمة الرئيسية</button>
-      <button onclick="changePlayerName()">تغيير الاسم</button>
+      <button onclick="openChangeNameOverlay()">تغيير الاسم</button>
       <button onclick="changePlayerTeam()">تغيير الفريق</button>
     </div>
 
@@ -155,7 +155,7 @@
     <!-- أزرار عامة داخل الجولة -->
     <div class="game-global-buttons">
       <button onclick="goBackToMainMenu()">الرجوع إلى القائمة الرئيسية</button>
-      <button onclick="changePlayerName()">تغيير الاسم</button>
+      <button onclick="openChangeNameOverlay()">تغيير الاسم</button>
       <button onclick="changePlayerTeam()">تغيير الفريق</button>
     </div>
 
@@ -212,6 +212,19 @@
       <div class="overlay-logo">CIPHER</div>
       <div id="info-text" class="overlay-text"></div>
       <button onclick="closeInfoOverlay()">حسناً</button>
+    </div>
+  </div>
+
+  <!-- شاشة تغيير الاسم (نفس ستايل الصورة) -->
+  <div id="change-name-overlay" class="overlay hidden">
+    <div class="overlay-box">
+      <div class="overlay-logo">CIPHER</div>
+      <div class="overlay-text">اكتب لقبك الجديد:</div>
+      <input id="change-name-input"
+             type="text"
+             class="big-input"
+             placeholder="لقبك الجديد" />
+      <button onclick="confirmChangeName()">حسناً</button>
     </div>
   </div>
 
