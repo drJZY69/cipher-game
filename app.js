@@ -60,6 +60,7 @@ let phase = "clue";              // "clue" أو "guess"
 // التلميح
 let currentClueText = "";
 let currentClueTeam = null;      // "red" أو "blue"
+let currentClueCount = 0;        // عدد المحاولات المتبقية بناء على التلميح
 
 // التايمر
 let masterTimeLimit = 60;        // بالثواني
@@ -274,9 +275,11 @@ function startPhaseTimer(phaseType) {
 
   // الضيوف ما يشغلون التايمر، بس يشوفون القيمة من Firebase
   if (!isHost) {
-    saveGameStateToRoom();
     return;
   }
+
+  // الهوست يرسل الحالة أول مرة
+  saveGameStateToRoom();
 
   timerId = setInterval(() => {
     timerRemaining--;
@@ -313,6 +316,7 @@ function saveGameStateToRoom(extra = {}) {
     phase: phase,
     currentClueText: currentClueText,
     currentClueTeam: currentClueTeam,
+    currentClueCount: currentClueCount,
     remainingRed: remainingRed,
     remainingBlue: remainingBlue,
     timerRemaining: timerRemaining,
@@ -341,6 +345,7 @@ function applyGameFromRoom(game) {
 
   currentClueText = game.currentClueText || "";
   currentClueTeam = game.currentClueTeam || null;
+  currentClueCount = typeof game.currentClueCount === "number" ? game.currentClueCount : 0;
 
   if (typeof game.remainingRed === "number") remainingRed = game.remainingRed;
   if (typeof game.remainingBlue === "number") remainingBlue = game.remainingBlue;
@@ -405,6 +410,7 @@ function handleTimerEnd() {
       phase = "clue";
       currentClueText = "";
       currentClueTeam = null;
+      currentClueCount = 0;
       clearAllSusMarkers();
       logEvent(
         `⏰ انتهى وقت التلميح للفريق ${
@@ -430,6 +436,7 @@ function handleTimerEnd() {
     phase = "clue";
     currentClueText = "";
     currentClueTeam = null;
+    currentClueCount = 0;
     clearAllSusMarkers();
     logEvent(
       `⏰ انتهى وقت اختيار البطاقات للفريق ${
@@ -768,6 +775,7 @@ async function startGame() {
   phase = "clue";
   currentClueText = "";
   currentClueTeam = null;
+  currentClueCount = 0;
   gameStarted = true;
   lastLoggedClueText = "";
 
@@ -809,6 +817,7 @@ function endRoundAndReturn() {
   gameStarted = false;
   currentClueText = "";
   currentClueTeam = null;
+  currentClueCount = 0;
   saveGameStateToRoom();
 
   const resultOverlay = document.getElementById("result-overlay");
@@ -903,6 +912,7 @@ function sendClue() {
 
   currentClueText = `${word} (${count})`;
   currentClueTeam = currentTeamTurn;
+  currentClueCount = count;
 
   const teamLabel = currentTeamTurn === "red" ? "الأحمر" : "الأزرق";
   logEvent(`🕵️‍♂️ [${teamLabel}] ${playerName} (Clue Cipher): "${currentClueText}"`);
@@ -936,29 +946,88 @@ function revealCard(i) {
 
   const teamLabelOp = playerTeam === "red" ? "الأحمر" : "الأزرق";
 
+  let endTurn = false;
+  let switchTeam = false;
+
   if (card.team === "red") {
     el.classList.add("revealed-red");
     remainingRed--;
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة حمراء).`);
+
+    if (currentTeamTurn === "red") {
+      currentClueCount = Math.max(0, currentClueCount - 1);
+    } else {
+      // اختار بطاقة الفريق الخصم
+      endTurn = true;
+      switchTeam = true;
+      currentClueCount = 0;
+    }
+
     checkWin();
   }
   else if (card.team === "blue") {
     el.classList.add("revealed-blue");
     remainingBlue--;
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة زرقاء).`);
+
+    if (currentTeamTurn === "blue") {
+      currentClueCount = Math.max(0, currentClueCount - 1);
+    } else {
+      // اختار بطاقة الفريق الخصم
+      endTurn = true;
+      switchTeam = true;
+      currentClueCount = 0;
+    }
+
     checkWin();
   }
   else if (card.team === "neutral") {
     el.classList.add("revealed-neutral");
     logEvent(`🎯 [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة حيادية).`);
+    endTurn = true;
+    switchTeam = true;
+    currentClueCount = 0;
   }
   else if (card.team === "assassin") {
     el.classList.add("revealed-assassin");
     logEvent(`☠ [${teamLabelOp}] ${playerName}: اختار "${card.word}" (بطاقة قاتل!).`);
     showResult("assassin");
+    return; // اللعبة انتهت
   }
 
-  saveGameStateToRoom();
+  // لو صار فوز، showResult يخلي gameStarted = false
+  if (!gameStarted) {
+    saveGameStateToRoom();
+    return;
+  }
+
+  // لو كل المحاولات خلصت مع اختيار صحيح، ينتهي الدور وينتقل للفريق الآخر
+  if (!endTurn && currentClueCount <= 0) {
+    endTurn = true;
+    switchTeam = true;
+  }
+
+  if (endTurn) {
+    const oldTeam = currentTeamTurn;
+    if (switchTeam) {
+      currentTeamTurn = oldTeam === "red" ? "blue" : "red";
+    }
+    phase = "clue";
+    currentClueText = "";
+    currentClueTeam = null;
+    currentClueCount = 0;
+    clearAllSusMarkers();
+    logEvent(
+      `🔁 انتهى دور الفريق ${oldTeam === "red" ? "الأحمر" : "الأزرق"}، الدور ينتقل للفريق الآخر.`
+    );
+    updateTurnUI();
+    updateClueUI();
+    saveGameStateToRoom();
+    startPhaseTimer("clue");
+  } else {
+    // لسه في محاولات، بس نحدّث الحالة للباقين
+    saveGameStateToRoom();
+  }
 }
 
 // ===== التحقق من الفوز =====
