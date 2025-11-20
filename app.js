@@ -1,5 +1,40 @@
 console.log("CIPHER Loaded");
 
+// ===== إعداد Firebase =====
+// ⚠️ غيّر القيم حسب مشروعك من Firebase console (Project settings -> General -> SDK setup)
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const ROOMS_COLLECTION = "rooms";
+let roomUnsubscribe = null;
+
+// ===== أدوات الرابط (للكود في الـ URL مثل ?room=ABCDE) =====
+function updateUrlWithRoomCode(code) {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("room", code);
+    window.history.pushState({ roomCode: code }, "", url.toString());
+  } catch (e) {
+    console.warn("تعذّر تحديث الرابط (مو مهم للّعبة):", e);
+  }
+}
+
+function getRoomCodeFromUrl() {
+  try {
+    const url = new URL(window.location.href);
+    const fromQuery = url.searchParams.get("room");
+    if (fromQuery) return fromQuery.toUpperCase();
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // معلومات اللاعب
 let playerName = "";
 let playerTeam = null;   // "red" / "blue"
@@ -286,6 +321,54 @@ function handleTimerEnd() {
   }
 }
 
+// ===== مزامنة اللوبي مع Firebase =====
+function syncPlayersFromRoom(playersObj) {
+  const blueSpy = document.getElementById("blue-spymaster-name");
+  const redSpy  = document.getElementById("red-spymaster-name");
+  const blueOps = document.getElementById("blue-operatives-list");
+  const redOps  = document.getElementById("red-operatives-list");
+
+  blueSpy.textContent = "غير معيّن";
+  redSpy.textContent  = "غير معيّن";
+  blueOps.innerHTML = "";
+  redOps.innerHTML = "";
+
+  const players = Object.values(playersObj || {});
+  players.forEach(p => {
+    if (!p || !p.name || !p.role || !p.team) return;
+
+    if (p.role === "spymaster") {
+      if (p.team === "blue") blueSpy.textContent = p.name;
+      else if (p.team === "red") redSpy.textContent = p.name;
+    } else if (p.role === "operative") {
+      const li = document.createElement("li");
+      li.textContent = p.name;
+      if (p.team === "blue") blueOps.appendChild(li);
+      else if (p.team === "red") redOps.appendChild(li);
+    }
+  });
+}
+
+function subscribeToRoomChanges() {
+  if (!roomCode) return;
+
+  if (roomUnsubscribe) {
+    roomUnsubscribe();
+    roomUnsubscribe = null;
+  }
+
+  const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
+  roomUnsubscribe = roomRef.onSnapshot(snap => {
+    if (!snap.exists) return;
+    const data = snap.data();
+
+    // مزامنة اللاعبين في اللوبي
+    syncPlayersFromRoom(data.players || {});
+
+    // مستقبلاً: ممكن نضيف هنا مزامنة حالة اللعبة (state) والبورد إلخ
+  });
+}
+
 // ===== شاشة البداية: هوست / انضمام =====
 window.addEventListener("DOMContentLoaded", () => {
   const nicknameInput = document.getElementById("nickname-input");
@@ -293,7 +376,13 @@ window.addEventListener("DOMContentLoaded", () => {
   const joinBtn = document.getElementById("btn-join");
   const joinCodeInput = document.getElementById("join-code-input");
 
-  hostBtn.onclick = () => {
+  // لو الرابط فيه ?room=CODE عبي خانة الانضمام تلقائي
+  const urlRoomCode = getRoomCodeFromUrl();
+  if (urlRoomCode) {
+    joinCodeInput.value = urlRoomCode;
+  }
+
+  hostBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
     playerName = name;
@@ -305,10 +394,31 @@ window.addEventListener("DOMContentLoaded", () => {
     updateRoomInfoUI();
     updateHostControlsUI();
 
+    // إنشاء الغرفة في Firebase
+    await db.collection(ROOMS_COLLECTION).doc(roomCode).set({
+      code: roomCode,
+      hostName: playerName,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      players: {
+        [playerName]: {
+          name: playerName,
+          team: null,
+          role: null,
+        }
+      },
+      // state: نضيفه لاحقاً لما نربط البورد
+    });
+
+    // تحديث الرابط بالكود (اختياري لكن حلو)
+    updateUrlWithRoomCode(roomCode);
+
+    // البدء بالاستماع لتغيّرات الغرفة
+    subscribeToRoomChanges();
+
     showSection("lobby-screen");
   };
 
-  joinBtn.onclick = () => {
+  joinBtn.onclick = async () => {
     let name = nicknameInput.value.trim();
     if (!name) name = "لاعب مجهول";
     playerName = name;
@@ -319,12 +429,36 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const roomRef = db.collection(ROOMS_COLLECTION).doc(code);
+    const snap = await roomRef.get();
+
+    if (!snap.exists) {
+      showInfoOverlay("هذه الغرفة غير موجودة. تأكد من الكود.");
+      return;
+    }
+
     isHost = false;
     roomCode = code;
 
     document.getElementById("player-name-label").textContent = playerName;
     updateRoomInfoUI();
     updateHostControlsUI();
+
+    // إضافة اللاعب إلى players
+    await roomRef.set({
+      players: {
+        [playerName]: {
+          name: playerName,
+          team: null,
+          role: null,
+        }
+      }
+    }, { merge: true });
+
+    // تحديث الرابط بالكود (مو ضروري لكن يفيد للمشاركة)
+    updateUrlWithRoomCode(roomCode);
+
+    subscribeToRoomChanges();
 
     showSection("lobby-screen");
   };
@@ -349,15 +483,33 @@ function clearPreviousRoleUI() {
   }
 }
 
-function leaveRole() {
+async function leaveRole() {
   clearPreviousRoleUI();
+  const prevTeam = playerTeam;
+  const prevRole = playerRole;
+
   playerTeam = null;
   playerRole = null;
   document.getElementById("player-team-label").textContent = "غير محدد";
   document.getElementById("player-role-label").textContent = "غير محدد";
+
+  // تحديث Firebase (إزالة اللاعب من الدور / من القائمة)
+  if (roomCode && playerName) {
+    const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
+    await roomRef.set({
+      players: {
+        [playerName]: firebase.firestore.FieldValue.delete()
+      }
+    }, { merge: true });
+  }
 }
 
-function chooseRole(team, role) {
+async function chooseRole(team, role) {
+  if (!roomCode || !playerName) {
+    showInfoOverlay("ادخل غرفة أولاً.");
+    return;
+  }
+
   if (role === "spymaster") {
     const id = team === "blue" ? "blue-spymaster-name" : "red-spymaster-name";
     const span = document.getElementById(id);
@@ -390,6 +542,18 @@ function chooseRole(team, role) {
 
   const startBtn = document.getElementById("start-game-btn");
   if (isHost) startBtn.disabled = false;
+
+  // تحديث Firebase بدور اللاعب
+  const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
+  await roomRef.set({
+    players: {
+      [playerName]: {
+        name: playerName,
+        team: team,
+        role: role,
+      }
+    }
+  }, { merge: true });
 }
 
 // ===== بدء اللعبة =====
