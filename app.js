@@ -69,6 +69,7 @@ let timerRemaining = 0;
 
 // حالة اللعبة (لـ Firebase)
 let gameStarted = false;
+let lastLoggedClueText = "";
 
 // الكلمات
 const ALL_WORDS = [
@@ -259,7 +260,7 @@ function canInteractWithCards(showMessage) {
   return true;
 }
 
-// ===== تايمر المراحل =====
+// ===== تايمر المراحل (الهوست فقط هو اللي يحركه) =====
 function startPhaseTimer(phaseType) {
   stopTimer();
 
@@ -271,9 +272,18 @@ function startPhaseTimer(phaseType) {
 
   updateTimerLabel();
 
+  // الضيوف ما يشغلون التايمر، بس يشوفون القيمة من Firebase
+  if (!isHost) {
+    saveGameStateToRoom();
+    return;
+  }
+
   timerId = setInterval(() => {
     timerRemaining--;
+    if (timerRemaining < 0) timerRemaining = 0;
+
     updateTimerLabel();
+    saveGameStateToRoom();
 
     if (timerRemaining <= 0) {
       stopTimer();
@@ -291,23 +301,25 @@ function clearAllSusMarkers() {
 }
 
 // ===== حفظ حالة اللعبة في Firebase =====
-function saveGameStateToRoom() {
+function saveGameStateToRoom(extra = {}) {
   if (!roomCode) return;
   const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
 
-  roomRef.set({
-    game: {
-      started: gameStarted,
-      boardState: boardState,
-      startingTeam: startingTeam,
-      currentTeamTurn: currentTeamTurn,
-      phase: phase,
-      currentClueText: currentClueText,
-      currentClueTeam: currentClueTeam,
-      remainingRed: remainingRed,
-      remainingBlue: remainingBlue
-    }
-  }, { merge: true });
+  const game = {
+    started: gameStarted,
+    boardState: boardState,
+    startingTeam: startingTeam,
+    currentTeamTurn: currentTeamTurn,
+    phase: phase,
+    currentClueText: currentClueText,
+    currentClueTeam: currentClueTeam,
+    remainingRed: remainingRed,
+    remainingBlue: remainingBlue,
+    timerRemaining: timerRemaining,
+    ...extra
+  };
+
+  roomRef.set({ game }, { merge: true });
 }
 
 // ===== قراءة حالة اللعبة من Firebase وتطبيقها =====
@@ -315,9 +327,11 @@ function applyGameFromRoom(game) {
   if (!game) return;
 
   const wasStarted = gameStarted;
+  const prevClue = currentClueText;
+
   gameStarted = !!game.started;
 
-  if (game.boardState) {
+  if (Array.isArray(game.boardState)) {
     boardState = game.boardState;
   }
 
@@ -331,21 +345,54 @@ function applyGameFromRoom(game) {
   if (typeof game.remainingRed === "number") remainingRed = game.remainingRed;
   if (typeof game.remainingBlue === "number") remainingBlue = game.remainingBlue;
 
-  // أول مرة تدخل اللعبة (للضيوف)
-  if (gameStarted && !wasStarted) {
+  if (typeof game.timerRemaining === "number") {
+    timerRemaining = game.timerRemaining;
+    updateTimerLabel();
+  }
+
+  // لو اللعبة شغّالة → الكل يكون على شاشة اللعبة
+  if (gameStarted) {
     const box = document.querySelector(".box");
     if (box) box.classList.add("corner");
 
     updatePlayerInfoUI();
     showSection("game-area");
     updateHostControlsUI();
-
-    startNewRoundFlowLocal();
-  } else if (gameStarted && wasStarted) {
-    // تحديث أثناء اللعب
     renderBoard();
     updateTurnUI();
     updateClueUI();
+  }
+
+  // انتقال من لعبة إلى لوبي (مثلاً الهوست أنهى الجولة أو فوز)
+  if (!gameStarted && wasStarted) {
+    stopTimer();
+
+    const overlay = document.getElementById("result-overlay");
+    if (overlay) overlay.classList.add("hidden");
+
+    const box = document.querySelector(".box");
+    if (box) box.classList.remove("corner");
+
+    showSection("lobby-screen");
+    updateHostControlsUI();
+  }
+
+  // تلميح جديد → يظهر للجميع ويتسجل مرّة واحدة
+  if (
+    currentClueText &&
+    currentClueText !== prevClue &&
+    currentClueText !== lastLoggedClueText
+  ) {
+    const teamLabel =
+      currentClueTeam === "red"
+        ? "الأحمر"
+        : currentClueTeam === "blue"
+        ? "الأزرق"
+        : "-";
+
+    logEvent(`🕵️‍♂️ [${teamLabel}] تلميح: "${currentClueText}"`);
+    showClueToast(`تلميح: ${currentClueText} — للفريق ${teamLabel}`);
+    lastLoggedClueText = currentClueText;
   }
 }
 
@@ -722,12 +769,13 @@ async function startGame() {
   currentClueText = "";
   currentClueTeam = null;
   gameStarted = true;
+  lastLoggedClueText = "";
 
   saveGameStateToRoom();
   startNewRoundFlowLocal();
 }
 
-// بدء جولة جديدة محلياً (استخدامها عند بداية اللعبة أو أول ما الضيف يستقبل الحالة)
+// بدء جولة جديدة محلياً (للهوست فقط)
 function startNewRoundFlowLocal() {
   const overlay = document.getElementById("result-overlay");
   if (overlay) overlay.classList.add("hidden");
@@ -747,7 +795,7 @@ function startNewRoundFlowLocal() {
 
   updateTurnUI();
   updateClueUI();
-  startPhaseTimer(phase);
+  startPhaseTimer("clue");
 }
 
 // 🔴 إنهاء الجولة والرجوع للوبي
@@ -759,6 +807,8 @@ function endRoundAndReturn() {
 
   stopTimer();
   gameStarted = false;
+  currentClueText = "";
+  currentClueTeam = null;
   saveGameStateToRoom();
 
   const resultOverlay = document.getElementById("result-overlay");
@@ -857,6 +907,8 @@ function sendClue() {
   const teamLabel = currentTeamTurn === "red" ? "الأحمر" : "الأزرق";
   logEvent(`🕵️‍♂️ [${teamLabel}] ${playerName} (Clue Cipher): "${currentClueText}"`);
 
+  lastLoggedClueText = currentClueText;
+
   wordInput.value = "";
 
   updateClueUI();
@@ -921,6 +973,8 @@ function checkWin() {
 // ===== شاشة الفوز/الخسارة =====
 function showResult(type) {
   stopTimer();
+  gameStarted = false;
+  saveGameStateToRoom();
 
   const overlay = document.getElementById("result-overlay");
   const text = document.getElementById("result-text");
@@ -941,7 +995,7 @@ function showResult(type) {
   }
 }
 
-// رجوع إلى اللوبي بعد النتيجة
+// رجوع إلى اللوبي بعد النتيجة (محلي بس، ما يغير حالة Firebase)
 function returnToLobbyFromResult() {
   stopTimer();
   const overlay = document.getElementById("result-overlay");
