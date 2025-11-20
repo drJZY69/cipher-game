@@ -853,40 +853,43 @@ async function chooseRole(team, role) {
     return;
   }
 
+  const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
+  const snap = await roomRef.get();
+  if (!snap.exists) return;
+
+  const data = snap.data() || {};
+  const players = data.players || {};
+
+  // ===== منع دخول شخصين لنفس Clue Cipher =====
   if (role === "spymaster") {
-    const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
-    const snap = await roomRef.get();
-    if (snap.exists) {
-      const data = snap.data() || {};
-      const players = data.players || {};
-      const already = Object.values(players).find(
-        p => p && p.team === team && p.role === "spymaster"
-      );
-      if (already && already.id !== playerId) {
-        showInfoOverlay("يوجد Clue Cipher لهذا الفريق بالفعل.");
-        return;
-      }
+    const already = Object.values(players).find(
+      p => p && p.team === team && p.role === "spymaster"
+    );
+
+    if (already && already.id !== playerId) {
+      showInfoOverlay(`عذراً، دور الـ Clue Cipher في الفريق ${
+        team === "blue" ? "الأزرق" : "الأحمر"
+      } ممتلئ بالفعل.`);
+      return;
     }
   }
 
+  // === تحديث اللاعب نفسه فقط ===
   playerTeam = team;
   playerRole = role;
   updatePlayerInfoUI();
 
-  const startBtn = document.getElementById("start-game-btn");
-  if (isHost && startBtn) startBtn.disabled = false;
-
-  // تحديث Firebase بدور اللاعب
-  const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
-  const data = {};
-  data[`players.${playerId}`] = {
+  const updateData = {};
+  updateData[`players.${playerId}`] = {
     id: playerId,
     name: playerName,
     team: team,
     role: role
   };
-  await roomRef.set(data, { merge: true });
+
+  await roomRef.set(updateData, { merge: true });
 }
+
 
 // ===== بدء اللعبة (من الهوست فقط) =====
 async function startGame() {
@@ -1354,3 +1357,4 @@ function changePlayerTeam() {
 
   chooseRole(newTeam, role);
 }
+
