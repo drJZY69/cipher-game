@@ -432,6 +432,66 @@ button:hover:not(:disabled) {
   background: radial-gradient(circle at top, rgba(15,15,15,0.95), rgba(0,0,0,1));
 }
 
+/* ===== قائمة اللاعبين ===== */
+.players-list-box {
+  margin: 20px auto 10px;
+  padding: 16px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+  text-align: center;
+}
+
+.players-list-box h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 18px;
+  color: #fef3c7;
+  text-shadow: 0 0 10px #8b5cf6;
+}
+
+#players-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#players-list li {
+  background: rgba(255,255,255,0.08);
+  margin-bottom: 6px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.player-role-tag {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.role-spy {
+  background: #8b5cf6;
+  color: #fff;
+}
+
+.role-ops {
+  background: #60a5fa;
+  color: #fff;
+}
+
+.player-host {
+  color: #facc15;
+  font-weight: bold;
+  margin-right: 6px;
+}
+
 /* ===== الجوال ===== */
 @media (max-width: 768px) {
   .box { transform: scale(0.9); }
