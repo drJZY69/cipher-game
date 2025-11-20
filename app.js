@@ -864,27 +864,35 @@ async function chooseRole(team, role) {
   const data = snap.data() || {};
   const players = data.players || {};
 
-  // 🔒 حماية دور Clue Cipher
+  // ===== 🔒 منع أكثر من Clue Cipher لكل فريق =====
   if (role === "spymaster") {
+
+    // ابحث عن أي سباي ماستر للفريق هذا
     const existingSpy = Object.values(players).find(
       p => p && p.team === team && p.role === "spymaster"
     );
 
+    // إذا موجود غيرك → ممنوع
     if (existingSpy && existingSpy.id !== playerId) {
-      showInfoOverlay(`لا يمكن، يوجد Clue Cipher للفريق ${team === "red" ? "الأحمر" : "الأزرق"}.`);
+      const teamLabel = team === "red" ? "الأحمر" : "الأزرق";
+      showInfoOverlay(`الدور محجوز! يوجد بالفعل Clue Cipher للفريق ${teamLabel}.`);
       return;
     }
   }
 
-  // 🔵🔴 تحديث اللاعب محليًا
+  // ===== 🔵 Seekers Cipher (لاعبين متعددين عادي) =====
+  // هنا ما نمنع أي أحد يدخل (الاختيار مفتوح)
+
+  // ===== تحديث بيانات اللاعب =====
   playerTeam = team;
   playerRole = role;
   updatePlayerInfoUI();
 
+  // زر البدء للهوست
   const startBtn = document.getElementById("start-game-btn");
   if (isHost && startBtn) startBtn.disabled = false;
 
-  // 🔥 حفظ الدور في Firebase
+  // ===== حفظ البيانات على Firebase =====
   const update = {};
   update[`players.${playerId}`] = {
     id: playerId,
@@ -1364,5 +1372,6 @@ function changePlayerTeam() {
 
   chooseRole(newTeam, role);
 }
+
 
 
