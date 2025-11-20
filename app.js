@@ -188,7 +188,6 @@ const ALL_WORDS = [
 // … (تم إدراج 1000 كلمة كاملة)
 ];
 
-
 // === أدوات واجهة عامة ===
 function showSection(id) {
   document.querySelectorAll(".section").forEach(sec => sec.classList.add("hidden"));
@@ -1445,4 +1444,5 @@ function changePlayerTeam() {
 
   chooseRole(newTeam, role);
 }
+
 
