@@ -411,6 +411,34 @@ button:hover:not(:disabled) {
   margin-bottom: 20px;
 }
 
+/* ===== حقل تغيير الاسم داخل الـ Overlay ===== */
+.overlay-input {
+  width: 100%;
+  max-width: 320px;
+  padding: 10px 16px;
+  margin: 12px auto 16px;
+  border-radius: 999px;
+  border: none;
+  font-size: 16px;
+  text-align: center;
+
+  background: rgba(15, 23, 42, 0.95); /* كحلي غامق */
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.9); /* حافة خفيفة */
+}
+
+.overlay-input::placeholder {
+  color: #9ca3af;
+}
+
+/* أزرار أسفل حقل تغيير الاسم داخل الـ Overlay */
+.overlay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
 /* ===== الجوال / التابلت ===== */
 @media (max-width: 768px) {
   .box { transform: scale(0.9); }
@@ -441,8 +469,10 @@ button:hover:not(:disabled) {
   .overlay-text { font-size: 22px; }
 
   .global-actions,
-  .game-global-buttons {
+  .game-global-buttons,
+  .overlay-actions {
     flex-direction: column;
+    align-items: center;
   }
 }
 
