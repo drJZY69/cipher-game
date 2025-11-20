@@ -76,6 +76,9 @@ let timerRemaining = 0;
 let gameStarted = false;
 let lastLoggedClueText = "";
 
+// اللوق المشترك
+let gameLog = [];
+
 // الكلمات
 const ALL_WORDS = [
   "مكة","المدينة","الرياض","جدة","الدمام","القاهرة","دمشق","بيروت","بغداد","الدوحة",
@@ -240,14 +243,23 @@ function showClueToast(text) {
 }
 
 // ===== اللوق =====
-function logEvent(message) {
+function renderLogUI() {
   const logContainer = document.getElementById("log-entries");
   if (!logContainer) return;
-  const div = document.createElement("div");
-  div.className = "log-entry";
-  div.textContent = message;
-  logContainer.appendChild(div);
+
+  logContainer.innerHTML = "";
+  gameLog.forEach(msg => {
+    const div = document.createElement("div");
+    div.className = "log-entry";
+    div.textContent = msg;
+    logContainer.appendChild(div);
+  });
   logContainer.scrollTop = logContainer.scrollHeight;
+}
+
+function logEvent(message) {
+  gameLog.push(message);
+  renderLogUI();
 }
 
 // ===== Overlay للرسائل =====
@@ -261,75 +273,6 @@ function showInfoOverlay(message) {
 function closeInfoOverlay() {
   const overlay = document.getElementById("info-overlay");
   if (overlay) overlay.classList.add("hidden");
-}
-
-/* ===== Overlay تغيير الاسم (مودال) ===== */
-
-// فتح مودال تغيير الاسم
-function openChangeNameOverlay() {
-  const overlay = document.getElementById("change-name-overlay");
-  const input   = document.getElementById("change-name-input");
-  if (!overlay || !input) return;
-
-  input.value = playerName || "";
-  overlay.classList.remove("hidden");
-  setTimeout(() => input.focus(), 50);
-}
-
-// تأكيد تغيير الاسم من المودال
-async function confirmChangeName() {
-  const overlay = document.getElementById("change-name-overlay");
-  const input   = document.getElementById("change-name-input");
-  if (!overlay || !input) return;
-
-  let newName = (input.value || "").trim();
-  if (!newName) {
-    showInfoOverlay("اكتب لقباً جديداً أولاً.");
-    return;
-  }
-
-  if (newName === playerName) {
-    overlay.classList.add("hidden");
-    return;
-  }
-
-  try {
-    await applyPlayerNameChange(newName);
-    overlay.classList.add("hidden");
-    showInfoOverlay("تم تغيير لقبك بنجاح للجميع.");
-  } catch (e) {
-    console.error(e);
-    showInfoOverlay("تعذّر تغيير اللقب، حاول مرة أخرى.");
-  }
-}
-
-// تنفيذ التغيير محلياً وعلى Firebase
-async function applyPlayerNameChange(newName) {
-  const oldName = playerName || "";
-  playerName = newName;
-
-  // تحديث الواجهة
-  const nameLabel = document.getElementById("player-name-label");
-  if (nameLabel) nameLabel.textContent = playerName;
-  const nameInfo = document.getElementById("player-name-info");
-  if (nameInfo) nameInfo.textContent = playerName;
-  const nicknameInput = document.getElementById("nickname-input");
-  if (nicknameInput) nicknameInput.value = playerName;
-
-  // لو ما فيه غرفة، نكتفي بالتحديث المحلي
-  if (!roomCode || !oldName) return;
-
-  const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
-
-  const data = {};
-  data[`players.${oldName}`] = firebase.firestore.FieldValue.delete();
-  data[`players.${newName}`] = {
-    name: newName,
-    team: playerTeam,
-    role: playerRole
-  };
-
-  await roomRef.set(data, { merge: true });
 }
 
 // ===== فحص هل اللاعب يقدر يتفاعل مع الكروت الآن؟ =====
@@ -366,20 +309,16 @@ function startPhaseTimer(phaseType) {
     return;
   }
 
-  // الهوست يرسل الحالة أول مرة (باقي القيم مع البورد)
+  // الهوست يرسل الحالة أول مرة
   saveGameStateToRoom();
 
-  // من هنا وطالع في كل ثانية نحدّث "الوقت فقط" بدون لمس حالة البورد
   timerId = setInterval(() => {
     timerRemaining--;
     if (timerRemaining < 0) timerRemaining = 0;
 
     updateTimerLabel();
-
-    if (roomCode) {
-      const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
-      roomRef.set({ game: { timerRemaining } }, { merge: true });
-    }
+    // نحدّث حالة اللعبة كاملة (تشمل التايمر) عشان ما نخرب البورد
+    saveGameStateToRoom();
 
     if (timerRemaining <= 0) {
       stopTimer();
@@ -413,6 +352,7 @@ function saveGameStateToRoom(extra = {}) {
     remainingRed: remainingRed,
     remainingBlue: remainingBlue,
     timerRemaining: timerRemaining,
+    log: gameLog,
     ...extra
   };
 
@@ -448,6 +388,12 @@ function applyGameFromRoom(game) {
     updateTimerLabel();
   }
 
+  // مزامنة اللوق من Firebase
+  if (Array.isArray(game.log)) {
+    gameLog = game.log;
+    renderLogUI();
+  }
+
   // لو اللعبة شغّالة → الكل يكون على شاشة اللعبة
   if (gameStarted) {
     const box = document.querySelector(".box");
@@ -475,7 +421,7 @@ function applyGameFromRoom(game) {
     updateHostControlsUI();
   }
 
-  // تلميح جديد → يظهر للجميع ويتسجل مرّة واحدة
+  // تلميح جديد → بس نعرضه كتويست (اللوق محفوظ وقت الإرسال)
   if (
     currentClueText &&
     currentClueText !== prevClue &&
@@ -488,7 +434,6 @@ function applyGameFromRoom(game) {
         ? "الأزرق"
         : "-";
 
-    logEvent(`🕵️‍♂️ [${teamLabel}] تلميح: "${currentClueText}"`);
     showClueToast(`تلميح: ${currentClueText} — للفريق ${teamLabel}`);
     lastLoggedClueText = currentClueText;
   }
@@ -606,7 +551,8 @@ function setupNewBoard() {
     word: w,
     team: layout[i],
     revealed: false,
-    sus: false
+    sus: false,
+    chosenByTeam: null
   }));
 
   remainingRed = layout.filter(x => x === "red").length;
@@ -640,9 +586,21 @@ function renderBoard() {
       else if (card.team === "assassin") div.classList.add("revealed-assassin");
     }
 
+    // إيموجي يوضح أي بطاقة قلبها الـ Seekers من منظور الـ Clue للفريق نفسه
+    const showChosenEmoji =
+      card.revealed &&
+      playerRole === "spymaster" &&
+      playerTeam &&
+      card.chosenByTeam === playerTeam;
+
+    const chosenHtml = showChosenEmoji
+      ? `<span class="chosen-marker">👁️‍🗨️</span>`
+      : "";
+
     div.innerHTML = `
       <span class="sus-marker ${card.sus && !card.revealed ? "" : "hidden"}">✋</span>
       <span class="card-word">${card.word}</span>
+      ${chosenHtml}
     `;
 
     div.onclick = () => handleCardClick(i);
@@ -893,6 +851,8 @@ async function startGame() {
   currentClueCount = 0;
   gameStarted = true;
   lastLoggedClueText = "";
+  gameLog = [];
+  renderLogUI();
 
   saveGameStateToRoom();
   startNewRoundFlowLocal();
@@ -903,8 +863,8 @@ function startNewRoundFlowLocal() {
   const overlay = document.getElementById("result-overlay");
   if (overlay) overlay.classList.add("hidden");
 
-  const logContainer = document.getElementById("log-entries");
-  if (logContainer) logContainer.innerHTML = "";
+  gameLog = [];
+  renderLogUI();
 
   renderBoard();
 
@@ -914,6 +874,7 @@ function startNewRoundFlowLocal() {
         currentTeamTurn === "red" ? "الأحمر" : "الأزرق"
       }.`
     );
+    saveGameStateToRoom();
   }
 
   updateTurnUI();
@@ -1050,6 +1011,9 @@ function sendClue() {
 function revealCard(i) {
   const card = boardState[i];
   if (!card || card.revealed) return;
+
+  // حفظ الفريق الذي قلب البطاقة
+  card.chosenByTeam = currentTeamTurn;
 
   card.revealed = true;
   card.sus = false;
@@ -1228,6 +1192,8 @@ async function goBackToMainMenu() {
   currentClueCount = 0;
   remainingRed = 0;
   remainingBlue = 0;
+  gameLog = [];
+  renderLogUI();
 
   const box = document.querySelector(".box");
   if (box) box.classList.remove("corner");
@@ -1245,9 +1211,50 @@ async function goBackToMainMenu() {
   showSection("welcome-screen");
 }
 
-// ===== زر تغيير الاسم (يستدعي المودال الجديد) =====
-function changePlayerName() {
-  openChangeNameOverlay();
+// ===== زر تغيير الاسم (بـ prompt حالياً) =====
+async function changePlayerName() {
+  if (!playerName) {
+    showInfoOverlay("لسه ما كتبت لقب. اكتب لقبك من شاشة البداية.");
+    return;
+  }
+
+  const newName = prompt("اكتب لقبك الجديد:", playerName);
+  if (!newName) return;
+  const trimmed = newName.trim();
+  if (!trimmed || trimmed === playerName) return;
+
+  const oldName = playerName;
+  playerName = trimmed;
+
+  // تحديث الواجهة محلياً
+  const nameLabel = document.getElementById("player-name-label");
+  if (nameLabel) nameLabel.textContent = playerName;
+  const nameInfo = document.getElementById("player-name-info");
+  if (nameInfo) nameInfo.textContent = playerName;
+  const nicknameInput = document.getElementById("nickname-input");
+  if (nicknameInput) nicknameInput.value = playerName;
+
+  // تحديث Firebase
+  if (roomCode && oldName) {
+    const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
+    const snap = await roomRef.get();
+    if (snap.exists) {
+      const data = snap.data() || {};
+      const players = data.players || {};
+      const oldData = players[oldName] || { team: playerTeam, role: playerRole };
+
+      delete players[oldName];
+      players[playerName] = {
+        name: playerName,
+        team: oldData.team ?? playerTeam,
+        role: oldData.role ?? playerRole
+      };
+
+      await roomRef.set({ players }, { merge: true });
+    }
+  }
+
+  showInfoOverlay("تم تغيير لقبك بنجاح للجميع.");
 }
 
 // ===== زر تغيير الفريق (تبديل أحمر/أزرق مع نفس الدور) =====
