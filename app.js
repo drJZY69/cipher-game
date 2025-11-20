@@ -904,8 +904,6 @@ async function chooseRole(team, role) {
   await roomRef.set(update, { merge: true });
 }
 
-
-
 // ===== بدء اللعبة (من الهوست فقط) =====
 async function startGame() {
   if (!isHost) {
@@ -1372,6 +1370,7 @@ function changePlayerTeam() {
 
   chooseRole(newTeam, role);
 }
+
 
 
 
