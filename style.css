@@ -76,7 +76,7 @@ button:hover:not(:disabled) {
 
 .hidden { display: none !important; }
 
-/* ===== شاشة البداية (اللقب + هوست/كود) ===== */
+/* ===== شاشة البداية ===== */
 .big-input {
   width: 100%;
   max-width: 360px;
@@ -134,11 +134,7 @@ button:hover:not(:disabled) {
   text-align: center;
 }
 
-.leave-btn {
-  margin-bottom: 10px;
-}
-
-/* أزرار عامة في اللوبي (رجوع للقائمة / تغيير الاسم / تغيير الفريق) */
+/* ===== الأزرار العامة ===== */
 .global-actions {
   display: flex;
   flex-wrap: wrap;
@@ -199,14 +195,13 @@ button:hover:not(:disabled) {
   font-size: 14px;
 }
 
-/* ===== معلومات اللاعب ===== */
+/* ===== شاشة اللعبة ===== */
 .game-info {
   margin-bottom: 10px;
   font-size: 14px;
   color: #e5e7eb;
 }
 
-/* ===== شريط الدور والوقت ===== */
 .game-top {
   margin-bottom: 10px;
   font-size: 14px;
@@ -220,7 +215,6 @@ button:hover:not(:disabled) {
   color: #fef3c7;
 }
 
-/* أزرار عامة داخل الجولة (نفس ستايل اللوبي) */
 .game-global-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -233,7 +227,7 @@ button:hover:not(:disabled) {
   min-width: 180px;
 }
 
-/* ===== نظام التلميح ===== */
+/* ===== التلميح ===== */
 .clue-panel {
   margin-bottom: 14px;
   background: rgba(0,0,0,0.35);
@@ -255,7 +249,7 @@ button:hover:not(:disabled) {
   max-width: 200px;
 }
 
-/* توست التلميح */
+/* ===== توست التلميح ===== */
 .clue-toast {
   position: fixed;
   top: 50%;
@@ -278,21 +272,16 @@ button:hover:not(:disabled) {
   transform: translate(-50%, -50%) scale(1);
 }
 
-/* ===== أزرار اللعبة ===== */
-.game-buttons {
-  margin-bottom: 10px;
-}
-
 /* ===== البورد ===== */
 .board {
   display: grid;
   grid-template-columns: repeat(5, 160px);
   gap: 12px;
   justify-content: center;
-  margin: 20px auto 20px auto;
+  margin: 20px auto;
 }
 
-/* ===== الكروت ===== */
+/* ===== بطاقات الكلمات ===== */
 .card {
   position: relative;
   background: #ffffff;
@@ -329,7 +318,6 @@ button:hover:not(:disabled) {
   display: none;
 }
 
-/* marker الكرت اللي اختاره Seekers (يظهر عند Clue Cipher فقط) */
 .chosen-marker {
   position: absolute;
   bottom: 4px;
@@ -337,7 +325,7 @@ button:hover:not(:disabled) {
   font-size: 20px;
 }
 
-/* ===== ألوان الكشف ===== */
+/* ألوان كشف الكروت */
 .card.revealed-red    { background: #f87171; }
 .card.revealed-blue   { background: #60a5fa; }
 .card.revealed-neutral{ background: #e5e7eb; }
@@ -392,7 +380,7 @@ button:hover:not(:disabled) {
   opacity: 0.95;
 }
 
-/* ===== شاشة الفوز / الرسائل الأساسية ===== */
+/* ===== Overlay ===== */
 .overlay {
   position: fixed;
   top: 0;
@@ -417,7 +405,6 @@ button:hover:not(:disabled) {
   max-width: 480px;
 }
 
-/* شعار CIPHER داخل الـ Overlay */
 .overlay-logo {
   font-size: 48px;
   font-weight: 900;
@@ -427,52 +414,12 @@ button:hover:not(:disabled) {
   margin-bottom: 10px;
 }
 
-/* نص رئيسي */
 .overlay-text {
   font-size: 20px;
   margin-bottom: 20px;
 }
 
-/* حقل تغيير الاسم داخل الـ Overlay */
-.overlay-input {
-  width: 100%;
-  max-width: 320px;
-  padding: 10px 16px;
-  margin: 12px auto 16px;
-  border-radius: 999px;
-  border: none;
-  font-size: 16px;
-  text-align: center;
-
-  background: rgba(15, 23, 42, 0.95);
-  color: #fff;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.9);
-}
-
-.overlay-input::placeholder {
-  color: #9ca3af;
-}
-
-/* أزرار أسفل حقل تغيير الاسم / النتيجة */
-.overlay-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-}
-
-/* ===== ستايل شاشة النتيجة حسب الفريق ===== */
-.result-card {
-  position: relative;
-}
-
-.result-title {
-  font-size: 26px;
-  margin-bottom: 8px;
-  font-weight: 800;
-}
-
-/* إضاءة الخلفية حسب نتيجة الجولة */
+/* ===== النتيجة ===== */
 #result-overlay.result-red {
   background: radial-gradient(circle at top, rgba(248,113,113,0.8), rgba(0,0,0,0.95));
 }
@@ -485,7 +432,7 @@ button:hover:not(:disabled) {
   background: radial-gradient(circle at top, rgba(15,15,15,0.95), rgba(0,0,0,1));
 }
 
-/* ===== الجوال / التابلت ===== */
+/* ===== الجوال ===== */
 @media (max-width: 768px) {
   .box { transform: scale(0.9); }
 
@@ -507,18 +454,8 @@ button:hover:not(:disabled) {
     margin-top: 6px;
   }
 
-  .team-card {
-    width: 100%;
-  }
-
-  .overlay-logo { font-size: 40px; }
-  .overlay-text { font-size: 18px; }
-
-  .global-actions,
-  .game-global-buttons,
   .overlay-actions {
     flex-direction: column;
-    align-items: center;
   }
 }
 
