@@ -263,6 +263,75 @@ function closeInfoOverlay() {
   if (overlay) overlay.classList.add("hidden");
 }
 
+/* ===== Overlay تغيير الاسم (مودال) ===== */
+
+// فتح مودال تغيير الاسم
+function openChangeNameOverlay() {
+  const overlay = document.getElementById("change-name-overlay");
+  const input   = document.getElementById("change-name-input");
+  if (!overlay || !input) return;
+
+  input.value = playerName || "";
+  overlay.classList.remove("hidden");
+  setTimeout(() => input.focus(), 50);
+}
+
+// تأكيد تغيير الاسم من المودال
+async function confirmChangeName() {
+  const overlay = document.getElementById("change-name-overlay");
+  const input   = document.getElementById("change-name-input");
+  if (!overlay || !input) return;
+
+  let newName = (input.value || "").trim();
+  if (!newName) {
+    showInfoOverlay("اكتب لقباً جديداً أولاً.");
+    return;
+  }
+
+  if (newName === playerName) {
+    overlay.classList.add("hidden");
+    return;
+  }
+
+  try {
+    await applyPlayerNameChange(newName);
+    overlay.classList.add("hidden");
+    showInfoOverlay("تم تغيير لقبك بنجاح للجميع.");
+  } catch (e) {
+    console.error(e);
+    showInfoOverlay("تعذّر تغيير اللقب، حاول مرة أخرى.");
+  }
+}
+
+// تنفيذ التغيير محلياً وعلى Firebase
+async function applyPlayerNameChange(newName) {
+  const oldName = playerName || "";
+  playerName = newName;
+
+  // تحديث الواجهة
+  const nameLabel = document.getElementById("player-name-label");
+  if (nameLabel) nameLabel.textContent = playerName;
+  const nameInfo = document.getElementById("player-name-info");
+  if (nameInfo) nameInfo.textContent = playerName;
+  const nicknameInput = document.getElementById("nickname-input");
+  if (nicknameInput) nicknameInput.value = playerName;
+
+  // لو ما فيه غرفة، نكتفي بالتحديث المحلي
+  if (!roomCode || !oldName) return;
+
+  const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
+
+  const data = {};
+  data[`players.${oldName}`] = firebase.firestore.FieldValue.delete();
+  data[`players.${newName}`] = {
+    name: newName,
+    team: playerTeam,
+    role: playerRole
+  };
+
+  await roomRef.set(data, { merge: true });
+}
+
 // ===== فحص هل اللاعب يقدر يتفاعل مع الكروت الآن؟ =====
 function canInteractWithCards(showMessage) {
   if (playerRole !== "operative") {
@@ -297,15 +366,20 @@ function startPhaseTimer(phaseType) {
     return;
   }
 
-  // الهوست يرسل الحالة أول مرة
+  // الهوست يرسل الحالة أول مرة (باقي القيم مع البورد)
   saveGameStateToRoom();
 
+  // من هنا وطالع في كل ثانية نحدّث "الوقت فقط" بدون لمس حالة البورد
   timerId = setInterval(() => {
     timerRemaining--;
     if (timerRemaining < 0) timerRemaining = 0;
 
     updateTimerLabel();
-    saveGameStateToRoom();
+
+    if (roomCode) {
+      const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
+      roomRef.set({ game: { timerRemaining } }, { merge: true });
+    }
 
     if (timerRemaining <= 0) {
       stopTimer();
@@ -1171,43 +1245,9 @@ async function goBackToMainMenu() {
   showSection("welcome-screen");
 }
 
-// ===== زر تغيير الاسم (للجميع في اللوبي/الجولة) =====
-async function changePlayerName() {
-  if (!playerName) {
-    showInfoOverlay("لسه ما كتبت لقب. اكتب لقبك من شاشة البداية.");
-    return;
-  }
-
-  const newName = prompt("اكتب لقبك الجديد:", playerName);
-  if (!newName) return;
-  const trimmed = newName.trim();
-  if (!trimmed || trimmed === playerName) return;
-
-  // تحديث Firebase (حذف المفتاح القديم وإضافة الجديد)
-  if (roomCode) {
-    const roomRef = db.collection(ROOMS_COLLECTION).doc(roomCode);
-    await roomRef.set({
-      players: {
-        [playerName]: firebase.firestore.FieldValue.delete(),
-        [trimmed]: {
-          name: trimmed,
-          team: playerTeam,
-          role: playerRole
-        }
-      }
-    }, { merge: true });
-  }
-
-  playerName = trimmed;
-
-  // تحديث الواجهة
-  const nameLabel = document.getElementById("player-name-label");
-  if (nameLabel) nameLabel.textContent = playerName;
-  const nameInfo = document.getElementById("player-name-info");
-  if (nameInfo) nameInfo.textContent = playerName;
-
-  // خلي مزامنة اللوبي من Firebase تعيد بناء القوائم بالأسماء الجديدة
-  showInfoOverlay("تم تغيير لقبك بنجاح للجميع.");
+// ===== زر تغيير الاسم (يستدعي المودال الجديد) =====
+function changePlayerName() {
+  openChangeNameOverlay();
 }
 
 // ===== زر تغيير الفريق (تبديل أحمر/أزرق مع نفس الدور) =====
