@@ -61,6 +61,13 @@
 
     <button class="leave-btn" onclick="leaveRole()">🡸 خروج من الدور الحالي (Spectator)</button>
 
+    <!-- أزرار عامة في اللوبي -->
+    <div class="global-actions">
+      <button onclick="goBackToMainMenu()">الرجوع إلى القائمة الرئيسية</button>
+      <button onclick="changePlayerName()">تغيير الاسم</button>
+      <button onclick="changePlayerTeam()">تغيير الفريق</button>
+    </div>
+
     <div class="teams-row">
 
       <!-- الفريق الأزرق -->
@@ -143,6 +150,13 @@
         الوقت المتبقي:
         <span id="timer-label">--:--</span>
       </div>
+    </div>
+
+    <!-- أزرار عامة داخل الجولة -->
+    <div class="game-global-buttons">
+      <button onclick="goBackToMainMenu()">الرجوع إلى القائمة الرئيسية</button>
+      <button onclick="changePlayerName()">تغيير الاسم</button>
+      <button onclick="changePlayerTeam()">تغيير الفريق</button>
     </div>
 
     <!-- نظام التلميح -->
