@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>CIPHER - لعبة الكلمات السرّية</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- الهيدر -->
+  <div class="box">
+    <div class="logo">CIPHER</div>
+    <div class="subtitle">لعبة drJZY بنكهة Codenames العربية</div>
+  </div>
+
+  <!-- شاشة البداية: لقب + هوست / انضمام -->
+  <div id="welcome-screen" class="section">
+    <h2>أهلاً بك في CIPHER</h2>
+    <p>اكتب لقبك أولاً:</p>
+
+    <input id="nickname-input" class="big-input" type="text" placeholder="مثال: drJZY" />
+
+    <div class="welcome-actions">
+      <div class="host-block">
+        <button id="btn-host">إنشاء غرفة (هوست)</button>
+      </div>
+
+      <div class="join-block">
+        <input id="join-code-input" class="code-input" type="text" maxlength="5" placeholder="رمز الغرفة (5 حروف)">
+        <button id="btn-join">انضمام</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- شاشة اللوبي -->
+  <div id="lobby-screen" class="section hidden">
+    <h2>اللوبي</h2>
+
+    <p>اللاعب: <span id="player-name-label"></span></p>
+
+    <!-- معلومات الغرفة -->
+    <div id="room-info" class="room-info hidden">
+      أنت: <span id="host-or-guest-label"></span> —
+      كود الغرفة:
+      <span id="room-code-text"></span>
+    </div>
+
+    <!-- إعداد الوقت -->
+    <div class="time-settings">
+      <div>
+        <label for="master-time-input">وقت Clue Cipher (ثواني):</label>
+        <input id="master-time-input" type="number" min="10" max="600" value="60">
+      </div>
+      <div>
+        <label for="ops-time-input">وقت Seekers Cipher (ثواني):</label>
+        <input id="ops-time-input" type="number" min="10" max="600" value="90">
+      </div>
+    </div>
+
+    <button class="leave-btn" onclick="leaveRole()">🡸 خروج من الدور الحالي (Spectator)</button>
+
+    <div class="teams-row">
+
+      <!-- الفريق الأزرق -->
+      <div class="team-card blue">
+        <h3>الفريق الأزرق</h3>
+
+        <div class="role-block">
+          <div class="role-title">Clue Cipher</div>
+          <div class="role-value" id="blue-spymaster-name">غير معيّن</div>
+          <button class="join-btn"
+                  onclick="chooseRole('blue','spymaster')">
+            انضم كـ Clue Cipher
+          </button>
+        </div>
+
+        <div class="role-block">
+          <div class="role-title">Seekers Cipher</div>
+          <ul id="blue-operatives-list" class="ops-list"></ul>
+          <button class="join-btn"
+                  onclick="chooseRole('blue','operative')">
+            انضم كـ Seekers Cipher
+          </button>
+        </div>
+      </div>
+
+      <!-- الفريق الأحمر -->
+      <div class="team-card red">
+        <h3>الفريق الأحمر</h3>
+
+        <div class="role-block">
+          <div class="role-title">Clue Cipher</div>
+          <div class="role-value" id="red-spymaster-name">غير معيّن</div>
+          <button class="join-btn"
+                  onclick="chooseRole('red','spymaster')">
+            انضم كـ Clue Cipher
+          </button>
+        </div>
+
+        <div class="role-block">
+          <div class="role-title">Seekers Cipher</div>
+          <ul id="red-operatives-list" class="ops-list"></ul>
+          <button class="join-btn"
+                  onclick="chooseRole('red','operative')">
+            انضم كـ Seekers Cipher
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="current-choice">
+      فريق: <span id="player-team-label">غير محدد</span> —
+      دور: <span id="player-role-label">غير محدد</span>
+    </p>
+
+    <button id="start-game-btn" onclick="startGame()" disabled>
+      بدء اللعبة
+    </button>
+  </div>
+
+  <!-- شاشة اللعبة -->
+  <div id="game-area" class="section hidden">
+
+    <!-- معلومات اللاعب -->
+    <div class="game-info">
+      أنت: <span id="player-name-info"></span> —
+      فريق: <span id="player-team-info"></span> —
+      دور: <span id="player-role-info"></span>
+    </div>
+
+    <!-- معلومات الدور والوقت -->
+    <div class="game-top">
+      <div>
+        دور الفريق:
+        <span id="turn-team-label"></span> —
+        المرحلة:
+        <span id="turn-phase-label"></span>
+      </div>
+      <div>
+        الوقت المتبقي:
+        <span id="timer-label">--:--</span>
+      </div>
+    </div>
+
+    <!-- نظام التلميح -->
+    <div id="clue-panel" class="clue-panel">
+      <!-- يظهر فقط للـ Clue Cipher الصحيح وفي مرحلته -->
+      <div id="clue-form" class="clue-form hidden">
+        <label>اكتب التلميح:</label>
+        <br>
+        <input id="clue-word-input" type="text" placeholder="مثال: بحر">
+        <input id="clue-count-input" type="number" min="1" max="9" value="1">
+        <button onclick="sendClue()">إرسال التلميح</button>
+      </div>
+
+      <!-- يظهر للجميع -->
+      <div class="clue-display">
+        التلميح الحالي:
+        <span id="clue-text">لا يوجد تلميح بعد</span>
+        — للفريق:
+        <span id="clue-team">-</span>
+      </div>
+    </div>
+
+    <!-- توست / أنيميشن التلميح -->
+    <div id="clue-toast" class="clue-toast hidden"></div>
+
+    <!-- أزرار التحكم -->
+    <div class="game-buttons">
+      <button id="new-round-btn" onclick="endRoundAndReturn()">إنهاء الجولة والرجوع إلى اللوبي</button>
+    </div>
+
+    <!-- البورد -->
+    <div id="board" class="board"></div>
+
+    <!-- اللوق -->
+    <div id="log-panel" class="log-panel">
+      <h3>السجل</h3>
+      <div id="log-entries"></div>
+    </div>
+  </div>
+
+  <!-- شاشة الفوز والخسارة -->
+  <div id="result-overlay" class="overlay hidden">
+    <div class="overlay-box">
+      <div class="overlay-logo">CIPHER</div>
+      <div id="result-text" class="overlay-text"></div>
+      <button onclick="returnToLobbyFromResult()">رجوع إلى اللوبي</button>
+    </div>
+  </div>
+
+  <!-- شاشة رسائل (ليس دورك / لا يمكن الاختيار...) -->
+  <div id="info-overlay" class="overlay hidden">
+    <div class="overlay-box">
+      <div class="overlay-logo">CIPHER</div>
+      <div id="info-text" class="overlay-text"></div>
+      <button onclick="closeInfoOverlay()">حسناً</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
