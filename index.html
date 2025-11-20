@@ -3,73 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <title>CIPHER - لعبة الكلمات السرّية</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase v8 -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
-
 <body>
-
-  <!-- الهيدر -->
+  <!-- الهيدر / شعار اللعبة -->
   <div class="box">
     <div class="logo">CIPHER</div>
-    <div class="subtitle">لعبة drJZY بنكهة Codenames العربية</div>
-  </div>
+    <div class="subtitle">لعبة الكلمات السرّية العربية</div>
 
-  <!-- شاشة البداية: لقب + هوست / انضمام -->
-  <div id="welcome-screen" class="section">
-    <h2>أهلاً بك في CIPHER</h2>
-    <p>اكتب لقبك أولاً:</p>
+    <div id="room-info" class="room-info hidden">
+      الغرفة:
+      <span id="room-code-text"></span>
+      – <span id="host-or-guest-label">-</span>
+    </div>
 
-    <input id="nickname-input" class="big-input" type="text" placeholder="مثال: drJZY" />
-
-    <div class="welcome-actions">
-      <div class="host-block">
-        <button id="btn-host">إنشاء غرفة (هوست)</button>
-      </div>
-
-      <div class="join-block">
-        <input id="join-code-input" class="code-input" type="text" maxlength="5" placeholder="رمز الغرفة (5 حروف)">
-        <button id="btn-join">انضمام</button>
-      </div>
+    <div class="game-info">
+      اللاعب: <span id="player-name-label">-</span> ·
+      فريقك: <span id="player-team-label">غير محدد</span> ·
+      دورك: <span id="player-role-label">غير محدد</span>
     </div>
   </div>
 
+  <!-- شاشة البداية -->
+  <section id="welcome-screen" class="section">
+    <h2>اختر لقبك وابدأ اللعب</h2>
+
+    <input id="nickname-input"
+           class="big-input"
+           type="text"
+           placeholder="اكتب لقبك هنا (مثلاً: drJZY)" />
+
+    <div class="welcome-actions">
+      <button id="btn-host">إنشاء غرفة جديدة (هوست)</button>
+
+      <div class="join-block">
+        <input id="join-code-input"
+               class="code-input"
+               maxlength="5"
+               placeholder="CODE" />
+        <button id="btn-join">انضمام إلى غرفة</button>
+      </div>
+    </div>
+  </section>
+
   <!-- شاشة اللوبي -->
-  <div id="lobby-screen" class="section hidden">
-    <h2>اللوبي</h2>
+  <section id="lobby-screen" class="section hidden">
+    <h2>لوبي الغرفة</h2>
 
-    <p>اللاعب: <span id="player-name-label"></span></p>
-
-    <!-- معلومات الغرفة -->
-    <div id="room-info" class="room-info hidden">
-      أنت: <span id="host-or-guest-label"></span> —
+    <div class="room-info">
       كود الغرفة:
-      <span id="room-code-text"></span>
+      <strong id="room-code-text-lobby"></strong>
     </div>
 
     <!-- إعداد الوقت -->
     <div class="time-settings">
       <div>
-        <label for="master-time-input">وقت Clue Cipher (ثواني):</label>
-        <input id="master-time-input" type="number" min="10" max="600" value="60">
+        <label for="master-time-input">وقت Clue Cipher (ثواني)</label>
+        <input id="master-time-input" type="number" min="10" max="300" value="60">
       </div>
       <div>
-        <label for="ops-time-input">وقت Seekers Cipher (ثواني):</label>
-        <input id="ops-time-input" type="number" min="10" max="600" value="90">
+        <label for="ops-time-input">وقت Seekers (ثواني)</label>
+        <input id="ops-time-input" type="number" min="10" max="300" value="90">
       </div>
     </div>
 
-    <button class="leave-btn" onclick="leaveRole()">🡸 خروج من الدور الحالي (Spectator)</button>
-
-    <!-- أزرار عامة في اللوبي -->
+    <!-- أزرار عامة -->
     <div class="global-actions">
-      <button onclick="goBackToMainMenu()">الرجوع إلى القائمة الرئيسية</button>
-      <button onclick="openChangeNameOverlay()">تغيير الاسم</button>
-      <button onclick="changePlayerTeam()">تغيير الفريق</button>
+      <button onclick="changePlayerName()">تغيير الاسم</button>
+      <button onclick="changePlayerTeam()">تبديل الفريق</button>
+      <button onclick="leaveRole()">ترك الدور</button>
+      <button onclick="goBackToMainMenu()">رجوع إلى القائمة الرئيسية</button>
     </div>
 
+    <!-- اختيار الفرق والأدوار -->
     <div class="teams-row">
-
       <!-- الفريق الأزرق -->
       <div class="team-card blue">
         <h3>الفريق الأزرق</h3>
@@ -77,18 +90,16 @@
         <div class="role-block">
           <div class="role-title">Clue Cipher</div>
           <div class="role-value" id="blue-spymaster-name">غير معيّن</div>
-          <button class="join-btn"
-                  onclick="chooseRole('blue','spymaster')">
-            انضم كـ Clue Cipher
+          <button onclick="chooseRole('blue','spymaster')">
+            الانضمام كـ Clue Cipher
           </button>
         </div>
 
         <div class="role-block">
           <div class="role-title">Seekers Cipher</div>
-          <ul id="blue-operatives-list" class="ops-list"></ul>
-          <button class="join-btn"
-                  onclick="chooseRole('blue','operative')">
-            انضم كـ Seekers Cipher
+          <ul class="ops-list" id="blue-operatives-list"></ul>
+          <button onclick="chooseRole('blue','operative')">
+            الانضمام كـ Seekers
           </button>
         </div>
       </div>
@@ -100,139 +111,118 @@
         <div class="role-block">
           <div class="role-title">Clue Cipher</div>
           <div class="role-value" id="red-spymaster-name">غير معيّن</div>
-          <button class="join-btn"
-                  onclick="chooseRole('red','spymaster')">
-            انضم كـ Clue Cipher
+          <button onclick="chooseRole('red','spymaster')">
+            الانضمام كـ Clue Cipher
           </button>
         </div>
 
         <div class="role-block">
           <div class="role-title">Seekers Cipher</div>
-          <ul id="red-operatives-list" class="ops-list"></ul>
-          <button class="join-btn"
-                  onclick="chooseRole('red','operative')">
-            انضم كـ Seekers Cipher
+          <ul class="ops-list" id="red-operatives-list"></ul>
+          <button onclick="chooseRole('red','operative')">
+            الانضمام كـ Seekers
           </button>
         </div>
       </div>
-
     </div>
 
-    <p class="current-choice">
-      فريق: <span id="player-team-label">غير محدد</span> —
-      دور: <span id="player-role-label">غير محدد</span>
-    </p>
+    <div class="current-choice">
+      فريقك: <span id="player-team-info">غير محدد</span> ·
+      دورك: <span id="player-role-info">غير محدد</span>
+    </div>
 
-    <button id="start-game-btn" onclick="startGame()" disabled>
-      بدء اللعبة
-    </button>
-  </div>
+    <div class="game-buttons">
+      <button id="start-game-btn" onclick="startGame()" disabled>بدء اللعبة</button>
+      <button id="new-round-btn" class="hidden" onclick="startGame()">جولة جديدة</button>
+    </div>
+  </section>
 
   <!-- شاشة اللعبة -->
-  <div id="game-area" class="section hidden">
-
-    <!-- معلومات اللاعب -->
-    <div class="game-info">
-      أنت: <span id="player-name-info"></span> —
-      فريق: <span id="player-team-info"></span> —
-      دور: <span id="player-role-info"></span>
-    </div>
-
-    <!-- معلومات الدور والوقت -->
+  <section id="game-area" class="section hidden">
     <div class="game-top">
-      <div>
-        دور الفريق:
-        <span id="turn-team-label"></span> —
-        المرحلة:
-        <span id="turn-phase-label"></span>
-      </div>
-      <div>
-        الوقت المتبقي:
-        <span id="timer-label">--:--</span>
-      </div>
+      الدور الحالي:
+      <strong id="turn-team-label">-</strong> ·
+      المرحلة: <strong id="turn-phase-label">-</strong> ·
+      التايمر: <span id="timer-label">0:00</span>
     </div>
 
-    <!-- أزرار عامة داخل الجولة -->
     <div class="game-global-buttons">
-      <button onclick="goBackToMainMenu()">الرجوع إلى القائمة الرئيسية</button>
-      <button onclick="openChangeNameOverlay()">تغيير الاسم</button>
-      <button onclick="changePlayerTeam()">تغيير الفريق</button>
+      <button onclick="changePlayerName()">تغيير الاسم</button>
+      <button onclick="changePlayerTeam()">تبديل الفريق</button>
+      <button onclick="goBackToMainMenu()">إنهاء والعودة للقائمة</button>
     </div>
 
-    <!-- نظام التلميح -->
-    <div id="clue-panel" class="clue-panel">
-      <!-- يظهر فقط للـ Clue Cipher الصحيح وفي مرحلته -->
-      <div id="clue-form" class="clue-form hidden">
-        <label>اكتب التلميح:</label>
-        <br>
-        <input id="clue-word-input" type="text" placeholder="مثال: بحر">
+    <!-- لوحة التلميح -->
+    <div class="clue-panel">
+      <div class="clue-form" id="clue-form">
+        <div>إرسال تلميح (Clue Cipher للفريق الحالي فقط)</div>
+        <input id="clue-word-input" type="text" placeholder="كلمة التلميح">
         <input id="clue-count-input" type="number" min="1" max="9" value="1">
         <button onclick="sendClue()">إرسال التلميح</button>
       </div>
 
-      <!-- يظهر للجميع -->
-      <div class="clue-display">
-        التلميح الحالي:
-        <span id="clue-text">لا يوجد تلميح بعد</span>
-        — للفريق:
-        <span id="clue-team">-</span>
+      <div>
+        آخر تلميح: <strong id="clue-text">لا يوجد تلميح بعد</strong>
+        <br />
+        لصالح: <span id="clue-team">-</span>
       </div>
-    </div>
-
-    <!-- توست / أنيميشن التلميح -->
-    <div id="clue-toast" class="clue-toast hidden"></div>
-
-    <!-- أزرار التحكم -->
-    <div class="game-buttons">
-      <button id="new-round-btn" onclick="endRoundAndReturn()">إنهاء الجولة والرجوع إلى اللوبي</button>
     </div>
 
     <!-- البورد -->
     <div id="board" class="board"></div>
 
     <!-- اللوق -->
-    <div id="log-panel" class="log-panel">
-      <h3>السجل</h3>
+    <div class="log-panel">
+      <h3>سجل الجولة</h3>
       <div id="log-entries"></div>
     </div>
-  </div>
+  </section>
 
-  <!-- شاشة الفوز والخسارة -->
-  <div id="result-overlay" class="overlay hidden">
-    <div class="overlay-box">
-      <div class="overlay-logo">CIPHER</div>
-      <div id="result-text" class="overlay-text"></div>
-      <button onclick="returnToLobbyFromResult()">رجوع إلى اللوبي</button>
-    </div>
-  </div>
+  <!-- توست التلميح -->
+  <div id="clue-toast" class="clue-toast hidden"></div>
 
-  <!-- شاشة رسائل (ليس دورك / لا يمكن الاختيار...) -->
+  <!-- Overlay: رسائل بسيطة -->
   <div id="info-overlay" class="overlay hidden">
     <div class="overlay-box">
       <div class="overlay-logo">CIPHER</div>
-      <div id="info-text" class="overlay-text"></div>
-      <button onclick="closeInfoOverlay()">حسناً</button>
+      <div id="info-text" class="overlay-text">رسالة</div>
+      <div class="overlay-actions">
+        <button onclick="closeInfoOverlay()">حسناً</button>
+      </div>
     </div>
   </div>
 
-  <!-- شاشة تغيير الاسم (نفس ستايل الصورة) -->
+  <!-- Overlay: نتيجة الفوز / الخسارة -->
+  <div id="result-overlay" class="overlay hidden">
+    <div class="overlay-box result-card">
+      <div class="overlay-logo">CIPHER</div>
+      <div id="result-title" class="result-title">نتيجة الجولة</div>
+      <div id="result-text" class="overlay-text">-</div>
+      <div class="overlay-actions">
+        <button onclick="endRoundAndReturn()">رجوع إلى اللوبي</button>
+        <button onclick="returnToLobbyFromResult()">عرض اللوبي بدون إنهاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay: تغيير الاسم -->
   <div id="change-name-overlay" class="overlay hidden">
     <div class="overlay-box">
       <div class="overlay-logo">CIPHER</div>
-      <div class="overlay-text">اكتب لقبك الجديد:</div>
+      <div class="overlay-text">غيّر لقبك الذي يظهر للجميع</div>
       <input id="change-name-input"
+             class="overlay-input"
              type="text"
-             class="big-input"
-             placeholder="لقبك الجديد" />
-      <button onclick="confirmChangeName()">حسناً</button>
+             placeholder="اكتب لقبك الجديد" />
+      <div class="overlay-actions">
+        <button onclick="confirmChangeName()">تأكيد التغيير</button>
+        <button onclick="document.getElementById('change-name-overlay').classList.add('hidden')">
+          إلغاء
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- Firebase SDK (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-
-  <!-- سكربت اللعبة -->
   <script src="app.js"></script>
 </body>
 </html>
